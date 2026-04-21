@@ -1,112 +1,112 @@
-# Resumen de Hallazgos — EDA Crypto ML Project
+# Findings Summary — EDA Crypto ML Project
 
 **Dataset:** Cryptocurrency Historical Prices (Kaggle: sudalairajkumar/cryptocurrencypricehistory)  
-**Archivo fuente:** `data/crypto_raw.csv`  
-**Período:** 2013-04-29 → 2021-07-06  
-**Monedas:** 23 (AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, USDC, USDT, WBTC, XEM, XLM, XMR, XRP)  
-**Registros totales:** 37,082
+**Source file:** `data/crypto_raw.csv`  
+**Period:** 2013-04-29 → 2021-07-06  
+**Currencies:** 23 (AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, USDC, USDT, WBTC, XEM, XLM, XMR, XRP)  
+**Total records:** 37,082
 
 ---
 
-## 1. Calidad de datos
+## 1. Data Quality
 
-- **Sin valores nulos** en ninguna columna numérica — el pipeline de `load_data.py` ya los eliminó.
-- **Sin duplicados** (Symbol, Date).
-- Cobertura temporal muy desigual: BTC tiene 2,991 registros (desde 2013) mientras AAVE apenas 275 (desde 2020). Para modelos supervisados se recomienda usar **BTC, ETH, LTC, XRP y XMR** que tienen la mayor cobertura histórica.
-- Las columnas disponibles son: `SNo`, `Name`, `Symbol`, `Date`, `High`, `Low`, `Open`, `Close`, `Volume`, `Marketcap`.
-
----
-
-## 2. Estadísticas descriptivas de retornos diarios
-
-| Moneda | Std (volatilidad) | Skewness | Kurtosis | Observación |
-|--------|:-----------------:|:--------:|:--------:|-------------|
-| XEM    | alto              | 16.04    | 257.4    | Evento extremo único |
-| DOGE   | alto              | 37.12    | 1377.0   | Crashes extremos 2021 |
-| BTC    | bajo-medio        | 0.24     | 10.27    | Más estable del grupo |
-| ETH    | bajo-medio        | 0.86     | 7.85     | Segundo más estable |
-| USDT   | muy bajo          | 11.72    | 1042.7   | Stablecoin |
-| USDC   | muy bajo          | 0.58     | 19.4     | Stablecoin |
-
-**Conclusión:** Ninguna criptomoneda sigue una distribución normal. Todas exhiben **leptocurtosis** (colas pesadas). Los QQ-plots confirman que los retornos extremos son mucho más frecuentes que lo que predice la distribución normal.
+- **No null values** in any numeric column — the `load_data.py` pipeline already removed them.
+- **No duplicates** (Symbol, Date).
+- Very uneven temporal coverage: BTC has 2,991 records (since 2013) while AAVE has only 275 (since 2020). For supervised models, it is recommended to use **BTC, ETH, LTC, XRP, and XMR** which have the greatest historical coverage.
+- Available columns are: `SNo`, `Name`, `Symbol`, `Date`, `High`, `Low`, `Open`, `Close`, `Volume`, `Marketcap`.
 
 ---
 
-## 3. Series de tiempo y precios
+## 2. Descriptive Statistics of Daily Returns
 
-- BTC alcanzó máximo histórico (en este dataset) de ~$58,000 en feb-2021.
-- ETH y BNB mostraron crecimiento exponencial en 2020-2021, superando a BTC en términos de retorno porcentual desde su primer dato disponible.
-- El **volumen** de BTC domina el mercado; en 2020-2021 se registraron los picos históricos.
-- Precio normalizado (base=100): BNB fue el activo de mayor rendimiento relativo en el período, seguido de ETH.
+| Currency | Std (volatility) | Skewness | Kurtosis | Observation |
+|----------|:----------------:|:--------:|:--------:|-------------|
+| XEM      | high             | 16.04    | 257.4    | Single extreme event |
+| DOGE     | high             | 37.12    | 1377.0   | Extreme crashes 2021 |
+| BTC      | low-medium       | 0.24     | 10.27    | Most stable in the group |
+| ETH      | low-medium       | 0.86     | 7.85     | Second most stable |
+| USDT     | very low         | 11.72    | 1042.7   | Stablecoin |
+| USDC     | very low         | 0.58     | 19.4     | Stablecoin |
+
+**Conclusion:** No cryptocurrency follows a normal distribution. All exhibit **leptokurtosis** (heavy tails). QQ-plots confirm that extreme returns are much more frequent than predicted by the normal distribution.
 
 ---
 
-## 4. Correlaciones entre monedas
+## 3. Time Series and Prices
 
-**Pares más correlacionados (retornos diarios):**
-1. WBTC–BTC: 0.93 — prácticamente el mismo activo (Wrapped Bitcoin)
+- BTC reached its all-time high (in this dataset) of ~$58,000 in Feb-2021.
+- ETH and BNB showed exponential growth in 2020-2021, surpassing BTC in terms of percentage return since their first available data.
+- **Volume** of BTC dominates the market; historical peaks were recorded in 2020-2021.
+- Normalized price (base=100): BNB was the asset with the highest relative performance in the period, followed by ETH.
+
+---
+
+## 4. Correlations between Currencies
+
+**Most correlated pairs (daily returns):**
+1. WBTC–BTC: 0.93 — practically the same asset (Wrapped Bitcoin)
 2. WBTC–ETH: 0.74
 3. WBTC–LTC: 0.71
-4. UNI–AAVE: 0.69 — ambas DeFi tokens
+4. UNI–AAVE: 0.69 — both DeFi tokens
 5. ETH–EOS: 0.68
 
-**Pares menos correlacionados:**
-- USDT y USDC con cualquier criptomoneda no-stable: correlaciones cercanas a cero o negativas.
-- XEM y DOGE muestran correlaciones bajas con el resto (eventos idiosincráticos dominantes).
+**Least correlated pairs:**
+- USDT and USDC with any non-stable cryptocurrency: correlations close to zero or negative.
+- XEM and DOGE show low correlations with the rest (idiosyncratic events dominant).
 
-**Implicación para modelos:** WBTC y BTC son redundantes como features — usar solo uno. Las stablecoins aportan poco como predictores de precio pero pueden ser útiles para detectar contexto de mercado.
-
----
-
-## 5. Volatilidad rolling
-
-- **Picos de volatilidad** identificados:
-  - 2017-2018: bull run y corrección posterior
-  - Mar-2020: crash COVID-19 (vol_30d de BTC llegó a ~8%)
-  - Ene-Feb 2021: rally alcista con aumento de volatilidad
-- La volatilidad de 90 días suaviza correctamente las señales de corto plazo.
-- DOGE y altcoins pequeñas tienen volatilidad estructuralmente mayor que BTC y ETH.
+**Implication for models:** WBTC and BTC are redundant as features — use only one. Stablecoins contribute little as price predictors but can be useful for detecting market context.
 
 ---
 
-## 6. Detección de outliers
+## 5. Rolling Volatility
 
-| Moneda | Outliers Z-Score | % | Outliers IQR | % |
-|--------|:----------------:|:-:|:------------:|:-:|
-| DOGE   | ~15              |~6%| ~60          |~23%|
-| XEM    | ~10              |~4%| ~50          |~20%|
-| BTC    | ~8               |~0.3%|~100       |~4% |
-| ETH    | ~6               |~0.3%|~90        |~4% |
-
-- Z-Score detecta los eventos más extremos; IQR es más agresivo y captura más días "inusuales".
-- Los outliers de BTC coinciden con eventos históricos identificables: crash COVID (mar-2020), rally 2017, crash 2018.
-- **Decisión de ingeniería:** No eliminar outliers en el dataset; sí agregarlos como features binarias (`outlier_z`, `outlier_iqr`) para que el modelo aprenda el contexto de mercado extremo.
+- **Volatility peaks** identified:
+  - 2017-2018: bull run and subsequent correction
+  - Mar-2020: COVID-19 crash (BTC vol_30d reached ~8%)
+  - Jan-Feb 2021: bullish rally with increased volatility
+- 90-day volatility correctly smooths short-term signals.
+- DOGE and small altcoins have structurally higher volatility than BTC and ETH.
 
 ---
 
-## 7. Distribución de retornos
+## 6. Outlier Detection
 
-- Todos los retornos muestran **asimetría positiva** (excepto ATOM con -0.09 y WBTC con -0.01).
-- Colas derechas (retornos positivos extremos) más pesadas que las izquierdas en la mayoría.
-- Los QQ-plots muestran desviación clara de la normal en las colas.
-- **Implicación para modelos:** Modelos basados en supuesto de normalidad (ej: OLS puro) estarán mal calibrados. Preferable usar modelos robustos (Random Forest, XGBoost) o transformar retornos con `np.sign(r) * np.log1p(|r|)`.
+| Currency | Z-Score Outliers | % | IQR Outliers | % |
+|----------|:----------------:|:-:|:------------:|:-:|
+| DOGE     | ~15              |~6%| ~60         |~23%|
+| XEM      | ~10              |~4%| ~50         |~20%|
+| BTC      | ~8               |~0.3%|~100      |~4% |
+| ETH      | ~6               |~0.3%|~90       |~4% |
 
----
-
-## 8. Estacionalidad
-
-- **Por mes:** En BTC, enero, abril y noviembre tienden a tener retornos promedio positivos. Febrero y septiembre tienden a ser negativos. El patrón no es consistente entre monedas.
-- **Por día de semana:** Los criptoactivos operan 7 días. No hay "efecto lunes" claro como en mercados de acciones, pero algunos activos muestran retornos levemente más altos en fin de semana.
-- **Conclusión:** La estacionalidad es débil. Usar variables de mes y día de semana como features dummy puede aportar señal marginal pero no será el driver principal de los modelos.
+- Z-Score detects the most extreme events; IQR is more aggressive and captures more "unusual" days.
+- BTC outliers coincide with identifiable historical events: COVID crash (Mar-2020), 2017 rally, 2018 crash.
+- **Engineering decision:** Do not remove outliers from the dataset; add them as binary features (`outlier_z`, `outlier_iqr`) so the model learns the context of extreme market conditions.
 
 ---
 
-## Decisiones para la fase de Supervisado
+## 7. Returns Distribution
 
-1. **Monedas prioritarias:** BTC y ETH (mayor historia, menor ruido por outliers extremos). Modelar por separado o incluir Symbol como feature categórica.
-2. **Features a crear:** SMA 7/14/30, EMA 14, RSI 14, Bollinger Bands, MACD, vol_30d, vol_90d, retorno lag-1, lag-2, lag-5.
-3. **Target:** `Close(t+1) > Close(t)` → clasificación binaria con `target=1`.
-4. **Split temporal:** 80/10/10 sin shuffle — los datos tienen estructura temporal y no se puede mezclar.
-5. **WBTC vs BTC:** No incluir ambos en el mismo modelo — son colineales (r=0.93).
-6. **Outliers:** No eliminar; incluir como features binarias.
-7. **Stablecoins (USDT, USDC):** Excluir como targets de predicción de precio; pueden ser útiles como contexto.
+- All returns show **positive skewness** (except ATOM with -0.09 and WBTC with -0.01).
+- Right tails (extreme positive returns) are heavier than left ones in most cases.
+- QQ-plots show clear deviation from normality in the tails.
+- **Implication for models:** Models based on normality assumption (e.g., pure OLS) will be miscalibrated. Prefer robust models (Random Forest, XGBoost) or transform returns with `np.sign(r) * np.log1p(|r|)`.
+
+---
+
+## 8. Seasonality
+
+- **By month:** In BTC, January, April, and November tend to have positive average returns. February and September tend to be negative. The pattern is not consistent across currencies.
+- **By day of week:** Crypto assets operate 7 days. There is no clear "Monday effect" as in stock markets, but some assets show slightly higher returns on weekends.
+- **Conclusion:** Seasonality is weak. Using month and day of week variables as dummy features can provide marginal signal but will not be the main driver of the models.
+
+---
+
+## Decisions for the Supervised Phase
+
+1. **Priority currencies:** BTC and ETH (greater history, less noise from extreme outliers). Model separately or include Symbol as categorical feature.
+2. **Features to create:** SMA 7/14/30, EMA 14, RSI 14, Bollinger Bands, MACD, vol_30d, vol_90d, lag-1 return, lag-2, lag-5.
+3. **Target:** `Close(t+1) > Close(t)` → binary classification with `target=1`.
+4. **Temporal split:** 80/10/10 without shuffle — data has temporal structure and cannot be mixed.
+5. **WBTC vs BTC:** Do not include both in the same model — they are collinear (r=0.93).
+6. **Outliers:** Do not remove; include as binary features.
+7. **Stablecoins (USDT, USDC):** Exclude as price prediction targets; they can be useful as context.
