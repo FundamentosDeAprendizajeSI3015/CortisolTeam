@@ -1,0 +1,15 @@
+# Dataset descargado (ZIP y carpeta extraída)
+data/extracted/
+data/*.zip
+
+# PDFs
+*.pdf
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Kaggle credentials (nunca subir)
+kaggle.json
