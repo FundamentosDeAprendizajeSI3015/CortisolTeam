@@ -1,12 +1,10 @@
 # Crypto ML Project
 
-Pipeline de machine learning sobre el dataset Cryptocurrency Historical Prices
-(Kaggle: sudalairajkumar/cryptocurrencypricehistory) con 23 criptomonedas y datos diarios
-desde 2013 hasta 2021.
+Machine learning pipeline using the Cryptocurrency Historical Prices dataset (Kaggle: sudalairajkumar/cryptocurrencypricehistory), featuring 23 cryptocurrencies with daily data from 2013 to 2021
 
 ---
 
-## Estructura del proyecto
+## Project Structure 
 
 ```
 ├── data/
@@ -27,22 +25,22 @@ desde 2013 hasta 2021.
 └── requirements.txt
 ```
 
-## Ramas
+## Branches
 
-| Rama | Contenido |
+| Branch | Content |
 |------|-----------|
-| `feature/load-data` | Descarga y validación del dataset |
-| `feature/eda` | Análisis Exploratorio (EDA) |
-| `feature/supervised` | Feature engineering y modelos supervisados |
+| `feature/load-data` | Dataset download and schema validation |
+| `feature/eda` | Exploratory Data Analysis (EDA) |
+| `feature/supervised` | Feature engineering and supervised learning models |
 
-## Setup rápido
+## Quick Setup
 
 ```bash
 pip install pandas pyarrow numpy matplotlib seaborn plotly \
             statsmodels scikit-learn xgboost ta joblib jupyter
 ```
 
-## Uso
+## Use
 
 ```bash
 # [01] Cargar datos
