@@ -1,58 +1,64 @@
-# Crypto ML Project
+# [03] Unsupervised — Crypto ML Project
 
-Pipeline de machine learning sobre el dataset Cryptocurrency Historical Prices
-(Kaggle: sudalairajkumar/cryptocurrencypricehistory) con 23 criptomonedas y datos diarios
-desde 2013 hasta 2021.
+## Objetivo
+Descubrir agrupaciones naturales entre criptomonedas usando clustering.
+Incluye EDA enfocado en la preparacion de features para clustering.
 
----
-
-## Estructura del proyecto
+## Estructura
 
 ```
 ├── data/
-│   ├── crypto_raw.csv          # Dataset crudo validado (load-data)
-│   └── processed/              # Features procesados (supervised)
-├── load_data/
-│   └── load_data.py            # [01] Descarga, validación e ingesta
-├── notebooks/
-│   ├── 02_eda.ipynb            # [02] Análisis Exploratorio de Datos
-│   └── 04_supervised.ipynb     # [04] Modelos Supervisados
-├── reports/
-│   ├── figures/                # Figuras exportadas (PNG)
-│   └── eda_summary.md          # Resumen de hallazgos del EDA
-├── src/
-│   ├── feature_engineering.py  # Indicadores técnicos y target
-│   └── supervised.py           # Entrenamiento y evaluación de modelos
-├── models/                     # Modelos serializados (.pkl)
+│   ├── crypto_raw.csv              # salida de load-data
+│   ├── features_clustering.csv     # features normalizados por moneda
+│   └── cluster_labels.csv          # etiquetas de cada algoritmo
+├── unsupervised/
+│   ├── eda_clustering.py           # feature engineering + normalizacion
+│   ├── clustering.py               # K-Means, DBSCAN, Agglomerative
+│   └── reports/
+│       ├── k_selection.png         # codo + silhouette + davies-bouldin
+│       ├── clusters_pca.png        # visualizacion PCA 2D por algoritmo
+│       └── conclusions.txt         # conclusiones e interpretacion de resultados
 └── requirements.txt
 ```
 
-## Ramas
-
-| Rama | Contenido |
-|------|-----------|
-| `feature/load-data` | Descarga y validación del dataset |
-| `feature/eda` | Análisis Exploratorio (EDA) |
-| `feature/supervised` | Feature engineering y modelos supervisados |
-
-## Setup rápido
+## Setup
 
 ```bash
-pip install pandas pyarrow numpy matplotlib seaborn plotly \
-            statsmodels scikit-learn xgboost ta joblib jupyter
+pip install -r requirements.txt
 ```
 
 ## Uso
 
+Correr en orden:
+
 ```bash
-# [01] Cargar datos
-python load_data/load_data.py
-
-# [02] EDA
-jupyter notebook notebooks/02_eda.ipynb
-
-# [03] Features + modelos supervisados
-python src/feature_engineering.py
-python src/supervised.py
-jupyter notebook notebooks/04_supervised.ipynb
+python unsupervised/eda_clustering.py
+python unsupervised/clustering.py
 ```
+
+## Features usados para clustering
+
+| Feature | Descripcion |
+|---------|-------------|
+| mean_return | Retorno diario promedio |
+| volatility | Volatilidad rolling 30d |
+| sharpe_ratio | Retorno ajustado por riesgo (anualizado) |
+| max_drawdown | Peor caida desde maximo historico |
+| avg_volume | Volumen promedio de trading |
+
+## Algoritmos
+
+- **K-Means** — seleccion de K via metodo del codo, silhouette y Davies-Bouldin
+- **DBSCAN** — deteccion de anomalias y monedas atipicas
+- **Agglomerative** — clustering jerarquico con el mismo K optimo
+
+## Resultados
+
+- K optimo: 2 (silhouette=0.6726) — XEM es outlier claro en todos los metodos
+- K=4 revela stablecoins (USDT, USDC) como grupo propio
+- DBSCAN separa DeFi/nuevos de altcoins establecidos; BTC, ETH y DOGE son anomalias
+- Ver `unsupervised/reports/conclusions.txt` para analisis completo
+
+## Dependencias
+
+`feature/load-data` — requiere `data/crypto_raw.csv`

@@ -1,0 +1,74 @@
+============================================================
+CONCLUSIONES DE CLUSTERING — Crypto ML Project
+============================================================
+
+Dataset: 23 monedas | Features: 5
+Features usados: mean_return, volatility, sharpe_ratio, max_drawdown, avg_volume
+
+------------------------------------------------------------
+1. SELECCION DE K
+------------------------------------------------------------
+  K optimo segun silhouette: 2 (score=0.6726)
+  K alternativo analizado: 4
+  K=2 produce separacion clara pero trivial (XEM vs resto).
+  K=4 revela subgrupos mas utiles para el analisis.
+
+------------------------------------------------------------
+2. K-MEANS K=2
+------------------------------------------------------------
+  Cluster 0 (22 monedas) — perfil cercano al promedio del mercado
+    Monedas: AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, USDC, USDT, WBTC, XLM, XMR, XRP
+  Cluster 1 (1 moneda) — volatilidad extrema, retorno historico excepcional, volumen bajo
+    Monedas: XEM
+
+------------------------------------------------------------
+3. K-MEANS K=4 (ALTERNATIVO)
+------------------------------------------------------------
+  Cluster 0 (1 moneda) — volatilidad extrema, retorno historico excepcional, volumen bajo
+    Monedas: XEM
+  Cluster 1 (20 monedas) — perfil cercano al promedio del mercado
+    Monedas: AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, WBTC, XLM, XMR, XRP
+  Cluster 2 (1 moneda) — mal ratio retorno/riesgo, stablecoin (drawdown atipico), volumen muy alto
+    Monedas: USDT
+  Cluster 3 (1 moneda) — mal ratio retorno/riesgo, stablecoin (drawdown atipico), volumen bajo
+    Monedas: USDC
+
+  Con K=4 emergen stablecoins (USDT, USDC) como grupo propio,
+  confirmando que su comportamiento es fundamentalmente distinto
+  al resto del mercado (volatilidad casi nula, precio anclado al USD).
+  USDT domina en volumen de trading; USDC opera con volumen menor.
+
+------------------------------------------------------------
+4. DBSCAN — ANOMALIAS Y GRUPOS NATURALES
+------------------------------------------------------------
+  Cluster 0: AAVE, BNB, DOT, SOL, UNI, WBTC
+  Cluster 1: ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, XLM, XMR, XRP
+  Anomalias (6): BTC, DOGE, ETH, USDC, USDT, XEM
+
+  Interpretacion de anomalias:
+    BTC, ETH — lideres de mercado, comportamiento unico como referencia
+    DOGE     — meme coin, movimientos impredecibles por sentiment
+    USDC, USDT — stablecoins, precio anclado al USD
+    XEM      — outlier extremo en retorno y volatilidad historica
+
+  DBSCAN separa naturalmente DeFi/nuevos (AAVE, BNB, DOT, SOL, UNI, WBTC)
+  de altcoins establecidos (ADA, LTC, XRP, etc.).
+
+------------------------------------------------------------
+5. CONSENSO ENTRE ALGORITMOS
+------------------------------------------------------------
+  Los tres algoritmos coinciden en:
+    - XEM es un outlier consistente en todos los metodos.
+    - USDT y USDC forman un grupo propio (stablecoins).
+    - BTC y ETH tienen perfil unico, no encajan en clusters generales.
+    - El resto del mercado forma un bloque homogeneo (alta correlacion).
+
+------------------------------------------------------------
+6. RECOMENDACIONES PARA SIGUIENTES FASES
+------------------------------------------------------------
+  - Excluir USDT y USDC de modelos de prediccion de precios.
+  - Tratar XEM como caso especial o excluirlo segun el objetivo.
+  - Usar labels de K=4 como feature adicional en el modelo supervisado.
+  - DBSCAN Cluster 0 (DeFi) puede requerir modelos separados
+    por su comportamiento mas correlacionado entre si.
+============================================================
