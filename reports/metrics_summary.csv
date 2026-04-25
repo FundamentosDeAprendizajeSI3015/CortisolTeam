@@ -1,0 +1,11 @@
+Model,Type,CV_AUC_mean,CV_AUC_std,Val_Accuracy,Val_Precision,Val_Recall,Val_F1,Val_ROC_AUC,Test_Accuracy,Test_Precision,Test_Recall,Test_F1,Test_ROC_AUC,CV_R2_mean,CV_R2_std,Val_MAE,Val_RMSE,Val_MAPE,Val_R2,Test_MAE,Test_RMSE,Test_MAPE,Test_R2,N_Clusters,Silhouette,Davies_Bouldin,Calinski_Harabasz,Symbol,Test_Days,Days_In_Market,Days_Out_Market,BuyHold_Total_Return,Strategy_Total_Return,Strategy_vs_BuyHold_pct
+LogisticRegression,Classification,0.509,0.0229,0.5014,0.5352,0.5667,0.5505,0.4894,0.492,0.5203,0.5488,0.5341,0.4769,,,,,,,,,,,,,,,,,,,,,
+RandomForestClassifier,Classification,0.5364,0.0252,0.5371,0.5884,0.4681,0.5214,0.5585,0.5204,0.5553,0.4833,0.5168,0.5244,,,,,,,,,,,,,,,,,,,,,
+XGBClassifier,Classification,0.5311,0.0209,0.5288,0.5908,0.4077,0.4825,0.5479,0.5216,0.5656,0.4244,0.4849,0.5305,,,,,,,,,,,,,,,,,,,,,
+RandomForestRegressor,Regression,,,,,,,,,,,,,-16951839.9842,33902653.2605,16.8301,89.9347,296.926,0.9982,1061.8521,6201.1852,89019.7327,0.4625,,,,,,,,,,,
+KMeans_K2,Clustering,,,,,,,,,,,,,,,,,,,,,,,2.0,0.6726,0.2123,13.3969,,,,,,,
+KMeans_K4,Clustering,,,,,,,,,,,,,,,,,,,,,,,4.0,0.5318,0.2291,19.0527,,,,,,,
+DBSCAN,Clustering,,,,,,,,,,,,,,,,,,,,,,,1.0,,,,,,,,,,
+Agglomerative_K2,Clustering,,,,,,,,,,,,,,,,,,,,,,,2.0,0.6726,0.2123,13.3969,,,,,,,
+Backtest_BTC,Backtesting,,,,,,,,,,,,,,,,,,,,,,,,,,,BTC,296.0,26.0,270.0,226.88,-54.41,-86.05
+Backtest_ETH,Backtesting,,,,,,,,,,,,,,,,,,,,,,,,,,,ETH,296.0,238.0,58.0,501.41,-17.13,-86.22

@@ -2,8 +2,9 @@
 data/extracted/
 data/*.zip
 
-# PDFs
+# PDFs (except the final report)
 *.pdf
+!reports/model_report.pdf
 
 # Python
 __pycache__/
