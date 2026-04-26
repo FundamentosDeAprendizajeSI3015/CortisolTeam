@@ -83,6 +83,5 @@ Funciones No Supervisado:
 - `plot_cluster_statistics()`
 
 
-### Licencia
-
-Uso libre para fines educativos e investigacion.
+### Uso de IA
+Esta visualización fue desarrollada con apoyo de herramientas de inteligencia artificial (Claude, Anthropic).
