@@ -83,6 +83,44 @@ def build_consensus(results: dict, symbols: list, threshold: int = 3) -> np.ndar
     return consensus
 
 
+def plot_sensitivity(X: np.ndarray, results: dict, symbols: list) -> None:
+    """Grilla 1x5: un subplot por nu. Rojo=anomalía, azul=normal."""
+    pca    = PCA(n_components=2, random_state=42)
+    coords = pca.fit_transform(X)
+    var_exp = pca.explained_variance_ratio_.sum()
+
+    nu_values = sorted(results.keys())
+    fig, axes = plt.subplots(1, len(nu_values), figsize=(5 * len(nu_values), 5))
+
+    for ax, nu in zip(axes, nu_values):
+        preds  = results[nu]
+        colors = ["red" if p == -1 else "steelblue" for p in preds]
+        ax.scatter(coords[:, 0], coords[:, 1], c=colors, s=100, zorder=3)
+        for i, sym in enumerate(symbols):
+            ax.annotate(sym, (coords[i, 0], coords[i, 1]),
+                        fontsize=6, ha="center", va="bottom")
+        n_anom = (preds == -1).sum()
+        ax.set_title(f"nu={nu:.2f}\n({n_anom} anomalías)", fontsize=10)
+        ax.set_xlabel("PC1")
+        ax.set_ylabel("PC2" if nu == nu_values[0] else "")
+        ax.tick_params(labelsize=7)
+
+    legend = [
+        mpatches.Patch(color="steelblue", label="Normal"),
+        mpatches.Patch(color="red",       label="Anomalía"),
+    ]
+    fig.legend(handles=legend, loc="upper right", fontsize=9)
+    fig.suptitle(
+        f"One-Class SVM — Sensibilidad de nu (PCA {var_exp:.0%} varianza)",
+        fontsize=13
+    )
+    plt.tight_layout()
+    out = REPORTS_DIR / "svm_sensitivity.png"
+    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"[plot] {out}")
+
+
 def main():
     features, labels = load_features()
     X       = features.values
@@ -93,6 +131,9 @@ def main():
 
     print("\n--- Consenso de anomalías ---")
     consensus = build_consensus(results, symbols, threshold=3)
+
+    print("\n--- Visualizaciones ---")
+    plot_sensitivity(X, results, symbols)
 
     print("\n[done] svm_analysis completado.")
 
