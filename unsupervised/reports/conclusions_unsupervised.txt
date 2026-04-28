@@ -1,0 +1,135 @@
+=================================================================
+CONCLUSIONES UNSUPERVISED — Crypto ML Project
+=================================================================
+
+Dataset : 23 monedas | 2013-2021
+Features: mean_return, volatility, sharpe_ratio, max_drawdown, avg_volume
+Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM
+
+-----------------------------------------------------------------
+1. ANOMALIAS POR ALGORITMO
+-----------------------------------------------------------------
+  Moneda | DBSCAN |   SVM | KMeans | Agglom | Total
+---------------------------------------------------
+    AAVE | normal |   ok  | normal | normal | 0/4
+     ADA | normal |   ok  | normal | normal | 0/4
+    ATOM | normal |   ok  | normal | normal | 0/4
+     BNB | normal |   ok  | normal | normal | 0/4
+     BTC |   ANOM |   ok  | normal | normal | 1/4
+     CRO | normal |   ok  | normal | normal | 0/4
+    DOGE |   ANOM |   ok  | normal | normal | 1/4
+     DOT | normal |   ok  | normal | normal | 0/4
+     EOS | normal |   ok  | normal | normal | 0/4
+     ETH |   ANOM |   ok  | normal | normal | 1/4
+    LINK | normal |   ok  | normal | normal | 0/4
+     LTC | normal |   ok  | normal | normal | 0/4
+   MIOTA | normal |   ok  | normal | normal | 0/4
+     SOL | normal |  ANOM | normal | normal | 1/4
+     TRX | normal |   ok  | normal | normal | 0/4
+     UNI | normal |   ok  | normal | normal | 0/4
+    USDC |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+    USDT |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+    WBTC | normal |  ANOM | normal | normal | 1/4
+     XEM |   ANOM |  ANOM |   ANOM |   ANOM | 4/4 <-- ROBUSTO
+     XLM | normal |   ok  | normal | normal | 0/4
+     XMR | normal |   ok  | normal | normal | 0/4
+     XRP | normal |   ok  | normal | normal | 0/4
+
+-----------------------------------------------------------------
+2. CONSENSO GLOBAL DE ANOMALIAS
+-----------------------------------------------------------------
+
+  ANOMALIA ROBUSTA (≥3 algoritmos):
+       XEM: alta volatilidad, alto retorno historico, volumen bajo
+
+  Señalada por 2 algoritmo(s):
+      USDC: baja volatilidad, bajo retorno historico, drawdown atipico (posible stablecoin)
+      USDT: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+
+  Señalada por 1 algoritmo(s):
+       BTC: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+      DOGE: alta volatilidad, alto retorno historico
+       ETH: baja volatilidad, volumen alto
+       SOL: alta volatilidad, alto retorno historico, volumen bajo, drawdown atipico (posible stablecoin)
+      WBTC: baja volatilidad, volumen bajo, drawdown atipico (posible stablecoin)
+
+  Normal en todos los algoritmos (15):
+    AAVE, ADA, ATOM, BNB, CRO, DOT, EOS, LINK, LTC, MIOTA, TRX, UNI, XLM, XMR, XRP
+
+-----------------------------------------------------------------
+3. SEGMENTACION DEL MERCADO (DBSCAN)
+-----------------------------------------------------------------
+
+  Anomalias / comportamiento unico (6):
+    BTC, DOGE, ETH, USDC, USDT, XEM
+
+  Grupo DeFi y nuevos protocolos (6):
+    AAVE, BNB, DOT, SOL, UNI, WBTC
+
+  Altcoins establecidos (11):
+    ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, XLM, XMR, XRP
+
+-----------------------------------------------------------------
+4. PERFIL DE GRUPOS — K-MEANS K=4
+-----------------------------------------------------------------
+
+  Cluster 0 — XEM — outlier extremo:
+    Monedas    : XEM
+    Volatilidad: 4.553341 (media del grupo)
+    Retorno    : 4.601700
+    Sharpe     : -0.0927
+    Max DD     : -0.8284
+
+  Cluster 1 — Mercado general (20 monedas):
+    Monedas    : AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, WBTC, XLM, XMR, XRP
+    Volatilidad: -0.201615 (media del grupo)
+    Retorno    : -0.204849
+    Sharpe     : 0.1993
+    Max DD     : -0.2436
+
+  Cluster 2 — USDT — stablecoin dominante en volumen:
+    Monedas    : USDT
+    Volatilidad: -0.260517 (media del grupo)
+    Retorno    : -0.252359
+    Sharpe     : -1.8904
+    Max DD     : 2.7851
+
+  Cluster 3 — USDC — stablecoin de menor volumen:
+    Monedas    : USDC
+    Volatilidad: -0.260517 (media del grupo)
+    Retorno    : -0.252359
+    Sharpe     : -2.0020
+    Max DD     : 2.9157
+
+-----------------------------------------------------------------
+5. LLAMADO A LA ACCION — FASE SUPERVISADA
+-----------------------------------------------------------------
+
+  A. EXCLUSIONES RECOMENDADAS
+     Anomalias robustas (≥3 algoritmos): ['XEM']
+     → Excluir USDT y USDC como targets de prediccion de precio.
+     → Excluir XEM del modelo general; analizarlo por separado si el objetivo
+       es detectar eventos extremos de mercado.
+     → SOL y WBTC: señaladas solo por SVM. No excluir, pero monitorear su
+       comportamiento en validacion del modelo supervisado.
+
+  B. FEATURES ADICIONALES RECOMENDADAS
+     → Incluir 'KMeans_K4' como feature categorica (4 grupos interpretables).
+     → Incluir 'OneClassSVM_consensus' como feature binaria de anomalia global.
+     → Incluir 'DBSCAN' (binarizado: -1 vs normal) para capturar outliers de densidad.
+
+  C. SEGMENTACION PARA MODELADO
+     → Grupo DeFi (AAVE, BNB, DOT, SOL, UNI, WBTC):
+        Alta correlacion interna. Considerar modelo separado o feature de grupo.
+     → Altcoins establecidos (ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, XLM, XMR, XRP):
+        Comportamiento homogeneo. Pueden modelarse conjuntamente.
+     → BTC y ETH: anomalias de densidad (DBSCAN) pero no de features globales (SVM).
+        Son los mejores candidatos como targets principales del modelo supervisado
+        por su historia larga y menor ruido idiosincratico.
+
+  D. SPLIT TEMPORAL
+     → 80 / 10 / 10 estrictamente cronologico. No mezclar fechas entre splits.
+     → Priorizar BTC y ETH (mayor cobertura historica desde 2013-2015).
+     → Evitar AAVE, DOT, SOL, UNI (datos solo desde 2020, <2 años).
+
+=================================================================
