@@ -288,9 +288,9 @@ def save_conclusions(features: pd.DataFrame, best_k: int, alt_k: int,
     lines.append("    por su comportamiento mas correlacionado entre si.")
     lines.append("=" * 60)
 
-    out_path = REPORTS_DIR / "conclusions.txt"
+    out_path = REPORTS_DIR / "clustering_report.txt"
     out_path.write_text("\n".join(lines), encoding="utf-8")
-    print(f"[save] unsupervised/reports/conclusions.txt")
+    print(f"[save] unsupervised/reports/clustering_report.txt")
 
 
 # ---------------------------------------------------------------------------
