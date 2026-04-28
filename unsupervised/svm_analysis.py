@@ -164,6 +164,77 @@ def plot_vs_dbscan(X: np.ndarray, consensus: np.ndarray,
     print(f"[plot] {out}")
 
 
+def save_conclusions(results: dict, consensus: np.ndarray,
+                     dbscan_labels: np.ndarray, symbols: list) -> None:
+    """Genera svm_conclusions.txt con tabla de estabilidad y análisis comparativo."""
+    nu_values = sorted(results.keys())
+    dbscan_binary = np.where(dbscan_labels == -1, -1, 1)
+
+    lines = []
+    lines.append("=" * 60)
+    lines.append("ANALISIS ONE-CLASS SVM — Crypto ML Project")
+    lines.append("=" * 60)
+    lines.append(f"\nDataset: {len(symbols)} monedas")
+    lines.append(f"Nu values analizados: {nu_values}")
+    lines.append(f"Umbral de consenso: ≥3 de {len(nu_values)} nu values\n")
+
+    lines.append("-" * 60)
+    lines.append("1. TABLA DE ESTABILIDAD POR MONEDA")
+    lines.append("-" * 60)
+    header = f"{'Moneda':>8} | " + " | ".join(f"nu={nu:.2f}" for nu in nu_values) + " | CONSENSO"
+    lines.append(header)
+    lines.append("-" * len(header))
+
+    for i, sym in enumerate(symbols):
+        row_vals = []
+        count = 0
+        for nu in nu_values:
+            val = results[nu][i]
+            row_vals.append("  ANOM" if val == -1 else "normal")
+            if val == -1:
+                count += 1
+        consensus_tag = "ANOMALIA" if consensus[i] == -1 else "normal"
+        lines.append(f"{sym:>8} | " + " | ".join(row_vals) + f" | {consensus_tag} ({count}/{len(nu_values)})")
+
+    anom_svm  = [s for s, l in zip(symbols, consensus)      if l == -1]
+    anom_dbs  = [s for s, l in zip(symbols, dbscan_binary)  if l == -1]
+    coinciden = [s for s in anom_svm if s in anom_dbs]
+    solo_svm  = [s for s in anom_svm if s not in anom_dbs]
+    solo_dbs  = [s for s in anom_dbs if s not in anom_svm]
+
+    lines.append(f"\n{'-' * 60}")
+    lines.append("2. COMPARACION CON DBSCAN")
+    lines.append("-" * 60)
+    lines.append(f"  Anomalías One-Class SVM ({len(anom_svm)}): {anom_svm}")
+    lines.append(f"  Anomalías DBSCAN         ({len(anom_dbs)}): {anom_dbs}")
+    lines.append(f"  Coincidencias            ({len(coinciden)}): {coinciden}")
+    lines.append(f"  Solo en SVM              ({len(solo_svm)}): {solo_svm}")
+    lines.append(f"  Solo en DBSCAN           ({len(solo_dbs)}): {solo_dbs}")
+
+    lines.append(f"\n{'-' * 60}")
+    lines.append("3. INTERPRETACION")
+    lines.append("-" * 60)
+    lines.append("  - Las monedas en 'Coincidencias' son anomalías robustas:")
+    lines.append("    dos métodos con lógicas distintas las señalan consistentemente.")
+    lines.append("  - Las monedas 'Solo en SVM' merecen revisión: SVM detecta fronteras")
+    lines.append("    en el espacio de features que DBSCAN no captura por densidad.")
+    lines.append("  - Las monedas 'Solo en DBSCAN' son outliers de densidad local,")
+    lines.append("    no necesariamente outliers globales en el espacio de features.")
+
+    lines.append(f"\n{'-' * 60}")
+    lines.append("4. RECOMENDACIONES PARA LA FASE SUPERVISADA")
+    lines.append("-" * 60)
+    lines.append(f"  - Excluir o tratar separadamente: {coinciden}")
+    lines.append("  - Usar 'OneClassSVM_consensus' de cluster_labels.csv como feature binaria.")
+    lines.append("  - Priorizar BTC y ETH como targets si están en el grupo anómalo:")
+    lines.append("    su comportamiento único los hace más predecibles con modelos propios.")
+    lines.append("=" * 60)
+
+    out = REPORTS_DIR / "svm_conclusions.txt"
+    out.write_text("\n".join(lines), encoding="utf-8")
+    print(f"[save] {out}")
+
+
 def main():
     features, labels = load_features()
     X       = features.values
@@ -178,6 +249,9 @@ def main():
     print("\n--- Visualizaciones ---")
     plot_sensitivity(X, results, symbols)
     plot_vs_dbscan(X, consensus, labels["DBSCAN"].values, symbols)
+
+    print("\n--- Conclusiones ---")
+    save_conclusions(results, consensus, labels["DBSCAN"].values, symbols)
 
     print("\n[done] svm_analysis completado.")
 
