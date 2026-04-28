@@ -235,6 +235,21 @@ def save_conclusions(results: dict, consensus: np.ndarray,
     print(f"[save] {out}")
 
 
+def update_labels(labels_df: pd.DataFrame, symbols: list,
+                  results: dict, consensus: np.ndarray) -> None:
+    """
+    Agrega dos columnas a cluster_labels.csv con la misma convención que DBSCAN:
+      -1 = anomalía, 1 = normal
+    - OneClassSVM_nu020: predicción puntual con nu=0.20
+    - OneClassSVM_consensus: anomalía estable en ≥3 nu values
+    """
+    labels_df["OneClassSVM_nu020"]     = pd.Series(results[0.20], index=symbols)
+    labels_df["OneClassSVM_consensus"] = pd.Series(consensus,     index=symbols)
+    labels_df.to_csv(CSV_LABELS)
+    print(f"[save] {CSV_LABELS} — columnas OneClassSVM_nu020, OneClassSVM_consensus agregadas")
+    print(labels_df[["DBSCAN", "OneClassSVM_nu020", "OneClassSVM_consensus"]].to_string())
+
+
 def main():
     features, labels = load_features()
     X       = features.values
@@ -252,6 +267,9 @@ def main():
 
     print("\n--- Conclusiones ---")
     save_conclusions(results, consensus, labels["DBSCAN"].values, symbols)
+
+    print("\n--- Actualizando cluster_labels.csv ---")
+    update_labels(labels, symbols, results, consensus)
 
     print("\n[done] svm_analysis completado.")
 
