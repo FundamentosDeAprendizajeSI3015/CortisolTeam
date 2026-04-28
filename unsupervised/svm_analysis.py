@@ -39,8 +39,32 @@ def load_features() -> tuple:
     return features, labels
 
 
+def run_sensitivity(X: np.ndarray, symbols: list,
+                    nu_values: list = NU_VALUES) -> dict:
+    """Entrena un OneClassSVM por cada nu. Retorna dict {nu: array -1/1}."""
+    results = {}
+
+    print(f"\n{'nu':>6} | {'Anomalías':>9} | Monedas")
+    print("-" * 60)
+
+    for nu in nu_values:
+        model = OneClassSVM(kernel="rbf", nu=nu, gamma="scale")
+        preds = model.fit_predict(X)          # 1=normal, -1=anomalía
+        anomalies = [s for s, p in zip(symbols, preds) if p == -1]
+        results[nu] = preds
+        print(f"{nu:>6.2f} | {len(anomalies):>9} | {anomalies}")
+
+    return results
+
+
 def main():
     features, labels = load_features()
+    X       = features.values
+    symbols = list(features.index)
+
+    print("\n--- Analisis de sensibilidad One-Class SVM ---")
+    results = run_sensitivity(X, symbols)
+
     print("\n[done] svm_analysis completado.")
 
 
