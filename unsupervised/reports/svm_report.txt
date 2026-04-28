@@ -1,0 +1,64 @@
+============================================================
+ANALISIS ONE-CLASS SVM — Crypto ML Project
+============================================================
+
+Dataset: 23 monedas
+Nu values analizados: [0.1, 0.15, 0.2, 0.25, 0.3]
+Umbral de consenso: ≥3 de 5 nu values
+
+------------------------------------------------------------
+1. TABLA DE ESTABILIDAD POR MONEDA
+------------------------------------------------------------
+  Moneda | nu=0.10 | nu=0.15 | nu=0.20 | nu=0.25 | nu=0.30 | CONSENSO
+---------------------------------------------------------------------
+    AAVE | normal | normal | normal | normal |   ANOM | normal (1/5)
+     ADA | normal | normal | normal | normal | normal | normal (0/5)
+    ATOM | normal | normal | normal | normal | normal | normal (0/5)
+     BNB | normal | normal | normal | normal | normal | normal (0/5)
+     BTC |   ANOM | normal | normal | normal |   ANOM | normal (2/5)
+     CRO | normal | normal | normal | normal | normal | normal (0/5)
+    DOGE | normal | normal | normal | normal |   ANOM | normal (1/5)
+     DOT | normal | normal | normal | normal | normal | normal (0/5)
+     EOS | normal | normal | normal | normal | normal | normal (0/5)
+     ETH | normal | normal | normal | normal |   ANOM | normal (1/5)
+    LINK | normal | normal | normal | normal | normal | normal (0/5)
+     LTC | normal | normal | normal | normal | normal | normal (0/5)
+   MIOTA | normal |   ANOM |   ANOM | normal | normal | normal (2/5)
+     SOL | normal |   ANOM |   ANOM |   ANOM |   ANOM | ANOMALIA (4/5)
+     TRX | normal | normal | normal | normal | normal | normal (0/5)
+     UNI | normal | normal | normal | normal | normal | normal (0/5)
+    USDC |   ANOM | normal | normal |   ANOM |   ANOM | ANOMALIA (3/5)
+    USDT | normal | normal |   ANOM |   ANOM |   ANOM | ANOMALIA (3/5)
+    WBTC |   ANOM | normal |   ANOM |   ANOM | normal | ANOMALIA (3/5)
+     XEM | normal |   ANOM | normal |   ANOM |   ANOM | ANOMALIA (3/5)
+     XLM | normal | normal | normal | normal | normal | normal (0/5)
+     XMR | normal | normal | normal | normal | normal | normal (0/5)
+     XRP | normal | normal | normal | normal | normal | normal (0/5)
+
+------------------------------------------------------------
+2. COMPARACION CON DBSCAN
+------------------------------------------------------------
+  Anomalías One-Class SVM (5): ['SOL', 'USDC', 'USDT', 'WBTC', 'XEM']
+  Anomalías DBSCAN         (6): ['BTC', 'DOGE', 'ETH', 'USDC', 'USDT', 'XEM']
+  Coincidencias            (3): ['USDC', 'USDT', 'XEM']
+  Solo en SVM              (2): ['SOL', 'WBTC']
+  Solo en DBSCAN           (3): ['BTC', 'DOGE', 'ETH']
+
+------------------------------------------------------------
+3. INTERPRETACION
+------------------------------------------------------------
+  - Las monedas en 'Coincidencias' son anomalías robustas:
+    dos métodos con lógicas distintas las señalan consistentemente.
+  - Las monedas 'Solo en SVM' merecen revisión: SVM detecta fronteras
+    en el espacio de features que DBSCAN no captura por densidad.
+  - Las monedas 'Solo en DBSCAN' son outliers de densidad local,
+    no necesariamente outliers globales en el espacio de features.
+
+------------------------------------------------------------
+4. RECOMENDACIONES PARA LA FASE SUPERVISADA
+------------------------------------------------------------
+  - Excluir o tratar separadamente: ['USDC', 'USDT', 'XEM']
+  - Usar 'OneClassSVM_consensus' de cluster_labels.csv como feature binaria.
+  - Priorizar BTC y ETH como targets si están en el grupo anómalo:
+    su comportamiento único los hace más predecibles con modelos propios.
+============================================================

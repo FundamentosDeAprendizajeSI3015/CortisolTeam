@@ -8,7 +8,7 @@ Uso:
 Salida:
     unsupervised/reports/svm_sensitivity.png   — grilla 1x5 PCA por nu
     unsupervised/reports/svm_vs_dbscan.png     — consensus SVM vs DBSCAN
-    unsupervised/reports/svm_conclusions.txt   — tabla de estabilidad y analisis
+    unsupervised/reports/svm_report.txt        — tabla de estabilidad y analisis
     data/cluster_labels.csv                    — +columnas OneClassSVM_nu020, OneClassSVM_consensus
 """
 
@@ -230,7 +230,7 @@ def save_conclusions(results: dict, consensus: np.ndarray,
     lines.append("    su comportamiento único los hace más predecibles con modelos propios.")
     lines.append("=" * 60)
 
-    out = REPORTS_DIR / "svm_conclusions.txt"
+    out = REPORTS_DIR / "svm_report.txt"
     out.write_text("\n".join(lines), encoding="utf-8")
     print(f"[save] {out}")
 
