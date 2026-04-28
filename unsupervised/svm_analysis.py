@@ -57,13 +57,42 @@ def run_sensitivity(X: np.ndarray, symbols: list,
     return results
 
 
+def build_consensus(results: dict, symbols: list, threshold: int = 3) -> np.ndarray:
+    """
+    Una moneda es anomalía de consenso si fue marcada como -1
+    en al menos `threshold` valores de nu.
+    Retorna array de -1 (anomalía) / 1 (normal).
+    """
+    n = len(symbols)
+    anomaly_counts = np.zeros(n, dtype=int)
+
+    for preds in results.values():
+        anomaly_counts += (preds == -1).astype(int)
+
+    consensus = np.where(anomaly_counts >= threshold, -1, 1)
+
+    print(f"\n[consensus] Umbral: ≥{threshold} de {len(results)} nu values")
+    print(f"{'Moneda':>8} | {'Conteo':>6} | {'Consenso':>9}")
+    print("-" * 35)
+    for sym, count, label in zip(symbols, anomaly_counts, consensus):
+        tag = "ANOMALIA" if label == -1 else "normal"
+        print(f"{sym:>8} | {count:>6} | {tag}")
+
+    anomalies = [s for s, l in zip(symbols, consensus) if l == -1]
+    print(f"\n[consensus] Anomalías estables ({len(anomalies)}): {anomalies}")
+    return consensus
+
+
 def main():
     features, labels = load_features()
     X       = features.values
     symbols = list(features.index)
 
     print("\n--- Analisis de sensibilidad One-Class SVM ---")
-    results = run_sensitivity(X, symbols)
+    results   = run_sensitivity(X, symbols)
+
+    print("\n--- Consenso de anomalías ---")
+    consensus = build_consensus(results, symbols, threshold=3)
 
     print("\n[done] svm_analysis completado.")
 
