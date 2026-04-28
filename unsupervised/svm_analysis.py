@@ -121,6 +121,49 @@ def plot_sensitivity(X: np.ndarray, results: dict, symbols: list) -> None:
     print(f"[plot] {out}")
 
 
+def plot_vs_dbscan(X: np.ndarray, consensus: np.ndarray,
+                   dbscan_labels: np.ndarray, symbols: list) -> None:
+    """Dos subplots: One-Class SVM consensus vs DBSCAN. Misma paleta."""
+    pca    = PCA(n_components=2, random_state=42)
+    coords = pca.fit_transform(X)
+    var_exp = pca.explained_variance_ratio_.sum()
+
+    # DBSCAN: -1=anomalía, >=0=cluster → convertir a -1/1 para misma paleta
+    dbscan_binary = np.where(dbscan_labels == -1, -1, 1)
+    n_agree = (consensus == dbscan_binary).sum()
+
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    for ax, (preds, title) in zip(axes, [
+        (consensus,     "One-Class SVM (consensus ≥3 nu)"),
+        (dbscan_binary, "DBSCAN (referencia)"),
+    ]):
+        colors = ["red" if p == -1 else "steelblue" for p in preds]
+        ax.scatter(coords[:, 0], coords[:, 1], c=colors, s=120, zorder=3,
+                   edgecolors="k", linewidths=0.4)
+        for i, sym in enumerate(symbols):
+            ax.annotate(sym, (coords[i, 0], coords[i, 1]),
+                        fontsize=7, ha="center", va="bottom")
+        ax.set_title(title, fontsize=11)
+        ax.set_xlabel(f"PC1 (PCA {var_exp:.0%} varianza)")
+        ax.set_ylabel("PC2")
+
+    legend = [
+        mpatches.Patch(color="steelblue", label="Normal"),
+        mpatches.Patch(color="red",       label="Anomalía"),
+    ]
+    fig.legend(handles=legend, loc="upper right", fontsize=9)
+    fig.suptitle(
+        f"Anomalías: One-Class SVM vs DBSCAN — Coincidencia: {n_agree}/{len(symbols)} monedas",
+        fontsize=13
+    )
+    plt.tight_layout()
+    out = REPORTS_DIR / "svm_vs_dbscan.png"
+    plt.savefig(out, dpi=150, bbox_inches="tight")
+    plt.close()
+    print(f"[plot] {out}")
+
+
 def main():
     features, labels = load_features()
     X       = features.values
@@ -134,6 +177,7 @@ def main():
 
     print("\n--- Visualizaciones ---")
     plot_sensitivity(X, results, symbols)
+    plot_vs_dbscan(X, consensus, labels["DBSCAN"].values, symbols)
 
     print("\n[done] svm_analysis completado.")
 
