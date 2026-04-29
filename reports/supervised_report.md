@@ -1,0 +1,70 @@
+# Reporte de Modelado Supervisado — Crypto ML Project
+
+**Generado:** 2026-04-29 15:35
+
+---
+
+## 1. Configuración del experimento
+- **Features base:** 11
+- **Features con lags (t-1, t-3, t-7):** 20
+- **Split temporal:** Train 21476 filas | Val 4839 filas | Test 5808 filas
+- **Validación cruzada:** TimeSeriesSplit (5 folds)
+- **Tuning:** RandomizedSearchCV (20 iteraciones)
+- **Filtro outliers Return:** [-1.0, 5.0]
+
+---
+
+## 2. Clasificadores — predice si el precio sube o baja
+
+### Métricas comparativas
+
+| Modelo | CV_AUC | Val_Acc | Val_F1 | Val_AUC | Test_Acc | Test_F1 | Test_AUC |
+|--------|--------|---------|--------|---------|----------|---------|----------|
+| LogisticRegression | 0.5353 | 0.5392 | 0.5688 | 0.5624 | 0.5122 | 0.5382 | 0.528 |
+| RandomForestClassifier | 0.5569 | 0.5292 | 0.5291 | 0.5404 | 0.5112 | 0.5038 | 0.5173 |
+| XGBClassifier | 0.562 | 0.5158 | 0.4965 | 0.5319 | 0.5176 | 0.4902 | 0.5248 |
+
+### Mejor clasificador: **LogisticRegression**
+- Val AUC: 0.5624
+- Test AUC: 0.528
+- Hiperparámetros: `{'clf__solver': 'lbfgs', 'clf__C': 1.0}`
+
+### Interpretación
+- AUC > 0.5 indica que los modelos capturan alguna señal real en los datos.
+- Predecir movimientos de criptomonedas es intrínsecamente difícil por la alta volatilidad.
+- Los features de lag aportan memoria temporal que mejora la capacidad predictiva.
+
+---
+
+## 3. Regresores — predice el retorno porcentual del día siguiente
+
+### Métricas comparativas
+
+| Modelo | CV_R2 | Val_MAE | Val_RMSE | Val_R2 | Test_MAE | Test_RMSE | Test_R2 |
+|--------|-------|---------|----------|--------|----------|-----------|---------|
+| Ridge | -8.4073 | 0.020141 | 0.030137 | 0.6871 | 0.023124 | 0.056915 | 0.6277 |
+| RandomForestRegressor | 0.7381 | 0.010899 | 0.022759 | 0.8216 | 0.012582 | 0.045984 | 0.757 |
+| XGBRegressor | 0.7133 | 0.01071 | 0.021431 | 0.8418 | 0.014143 | 0.045762 | 0.7593 |
+
+### Mejor regresor: **XGBRegressor**
+- Val R²: 0.8418
+- Test R²: 0.7593
+- Hiperparámetros: `{'reg__subsample': 0.8, 'reg__n_estimators': 200, 'reg__max_depth': 7, 'reg__learning_rate': 0.05}`
+
+### Interpretación
+- El target es el retorno porcentual diario — variable estacionaria con sentido financiero.
+- R² positivo en test indica que el modelo generaliza más allá del azar.
+- Return fue excluido de las features del regresor para evitar data leakage.
+- Los lags de rsi_14 y macd (t-1, t-3, t-7) capturan inercia de los indicadores técnicos.
+
+---
+
+## 4. Figuras generadas
+- `13_comparacion_clasificadores.png` — AUC val vs test por modelo
+- `14_comparacion_regresores.png` — R² val vs test por modelo
+- `15_confusion_matrix.png` — Matriz de confusión del mejor clasificador
+- `16_roc_curve.png` — Curva ROC del mejor clasificador
+- `17_feature_importance_clf.png` — Importancia de features (clasificador)
+- `18_feature_importance_reg.png` — Importancia de features (regresor)
+- `19_predicciones_vs_real.png` — Predicciones vs valores reales (regresor)
+- `20_residuos.png` — Distribución de residuos (regresor)
