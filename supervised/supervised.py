@@ -16,11 +16,12 @@ Mejoras aplicadas:
     - Features de lag (t-1, t-3, t-7) para memoria temporal
     - RandomizedSearchCV para tuning de hiperparámetros
     - Reporte completo en reports/supervised_report.md
-    - Gráfico predicciones vs real del mejor regresor
-    - Gráfico de residuos del mejor regresor
+    - Gráficas 3D: features vs Return, predicciones 3D, PCA+clusters
+    - Gráficas 2D: heatmap, boxplot por símbolo, curvas de aprendizaje,
+      tabla de métricas, scatter matrix
 
 Uso:
-    python src/supervised.py
+    python supervised/supervised.py
 
 Salidas:
     models/best_classifier.pkl
@@ -34,6 +35,15 @@ Salidas:
     reports/figures/18_feature_importance_reg.png
     reports/figures/19_predicciones_vs_real.png
     reports/figures/20_residuos.png
+    reports/figures/21_3d_features_vs_return.png
+    reports/figures/22_3d_predicciones.png
+    reports/figures/23_3d_pca_clusters.png
+    reports/figures/24_heatmap_correlacion.png
+    reports/figures/25_boxplot_return_por_simbolo.png
+    reports/figures/26_curva_aprendizaje_clf.png
+    reports/figures/27_curva_aprendizaje_reg.png
+    reports/figures/28_tabla_metricas.png
+    reports/figures/29_scatter_matrix.png
 """
 
 import warnings
@@ -46,13 +56,14 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from datetime import datetime
-
 from pathlib import Path
+
 from sklearn.linear_model import LogisticRegression, Ridge
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV
+from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV, learning_curve
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.decomposition import PCA
 from sklearn.metrics import (
     accuracy_score, f1_score, roc_auc_score,
     confusion_matrix, ConfusionMatrixDisplay, RocCurveDisplay,
@@ -60,15 +71,19 @@ from sklearn.metrics import (
 )
 from xgboost import XGBClassifier, XGBRegressor
 
-ROOT        = Path(__file__).resolve().parent.parent
-DATA_PATH   = ROOT / 'data' / 'processed' / 'features.parquet'
-MODELS_DIR  = ROOT / 'models'
-FIGURES_DIR = ROOT / 'reports' / 'figures'
-REPORTS_DIR = ROOT / 'reports'
+# ── Rutas ──────────────────────────────────────────────────────────────────
+ROOT             = Path(__file__).resolve().parent.parent
+DATA_PATH        = ROOT / 'data' / 'processed' / 'features.parquet'
+CLUSTER_PATH     = ROOT / 'data' / 'cluster_labels.csv'
+FEAT_CLUST_PATH  = ROOT / 'data' / 'features_clustering.csv'
+MODELS_DIR       = ROOT / 'models'
+FIGURES_DIR      = ROOT / 'reports' / 'figures'
+REPORTS_DIR      = ROOT / 'reports'
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
 
+# ── Constantes ─────────────────────────────────────────────────────────────
 BASE_FEATURE_COLS = [
     'sma_7', 'sma_14', 'sma_30',
     'ema_14', 'rsi_14',
@@ -79,11 +94,11 @@ BASE_FEATURE_COLS = [
 LAG_COLS_SOURCE = ['Return', 'rsi_14', 'macd']
 LAG_PERIODS     = [1, 3, 7]
 
-TARGET_CLF   = 'target'
-TARGET_REG   = 'Return'
-RETURN_MIN   = -1.0
-RETURN_MAX   =  5.0
-RANDOM_STATE = 42
+TARGET_CLF    = 'target'
+TARGET_REG    = 'Return'
+RETURN_MIN    = -1.0
+RETURN_MAX    =  5.0
+RANDOM_STATE  = 42
 N_ITER_SEARCH = 20
 
 
@@ -302,7 +317,7 @@ def entrenar_clasificadores(train, val, test, feature_cols):
     mejor_nombre   = resultados_df['Val_AUC'].idxmax()
     mejor_pipeline = pipelines_ajustados[mejor_nombre]
     print(f'\n  Mejor clasificador: {mejor_nombre}  (Val_AUC={resultados_df.loc[mejor_nombre, "Val_AUC"]})')
-    return resultados_df, mejor_pipeline, mejor_nombre
+    return resultados_df, mejor_pipeline, mejor_nombre, pipelines_ajustados
 
 
 # ── Regresores ─────────────────────────────────────────────────────────────
@@ -349,7 +364,7 @@ def entrenar_regresores(train, val, test, feature_cols):
     """Entrena los 3 regresores con RandomizedSearchCV y evalúa en val/test.
 
     Target: retorno porcentual del día siguiente (Return).
-    Se excluye Return y sus lags de las features para evitar data leakage.
+    Se excluye Return y sus lags para evitar data leakage.
 
     Args:
         train: Datos de entrenamiento.
@@ -409,7 +424,7 @@ def entrenar_regresores(train, val, test, feature_cols):
     mejor_nombre   = resultados_df['Val_R2'].idxmax()
     mejor_pipeline = pipelines_ajustados[mejor_nombre]
     print(f'\n  Mejor regresor: {mejor_nombre}  (Val_R2={resultados_df.loc[mejor_nombre, "Val_R2"]})')
-    return resultados_df, mejor_pipeline, mejor_nombre, feature_cols_reg
+    return resultados_df, mejor_pipeline, mejor_nombre, feature_cols_reg, pipelines_ajustados
 
 
 # ── Reporte ────────────────────────────────────────────────────────────────
@@ -425,9 +440,9 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         mejor_reg_nombre: Nombre del mejor regresor.
         feature_cols: Features usadas en clasificación.
         feature_cols_reg: Features usadas en regresión.
-        n_train: Número de filas de entrenamiento.
-        n_val: Número de filas de validación.
-        n_test: Número de filas de test.
+        n_train: Filas de entrenamiento.
+        n_val: Filas de validación.
+        n_test: Filas de test.
     """
     fecha = datetime.now().strftime('%Y-%m-%d %H:%M')
     lineas = [
@@ -462,7 +477,7 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         f'- Hiperparámetros: `{res_clf.loc[mejor_clf_nombre, "Mejores_params"]}`',
         '\n### Interpretación',
         '- AUC > 0.5 indica que los modelos capturan alguna señal real en los datos.',
-        '- Predecir movimientos de criptomonedas es intrínsecamente difícil por la alta volatilidad.',
+        '- Predecir movimientos de criptomonedas es difícil por la alta volatilidad.',
         '- Los features de lag aportan memoria temporal que mejora la capacidad predictiva.',
         '\n---\n',
         '## 3. Regresores — predice el retorno porcentual del día siguiente',
@@ -484,20 +499,31 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         f'- Test R²: {res_reg.loc[mejor_reg_nombre, "Test_R2"]}',
         f'- Hiperparámetros: `{res_reg.loc[mejor_reg_nombre, "Mejores_params"]}`',
         '\n### Interpretación',
-        '- El target es el retorno porcentual diario — variable estacionaria con sentido financiero.',
+        '- El target es el retorno porcentual diario — variable estacionaria.',
         '- R² positivo en test indica que el modelo generaliza más allá del azar.',
         '- Return fue excluido de las features del regresor para evitar data leakage.',
-        '- Los lags de rsi_14 y macd (t-1, t-3, t-7) capturan inercia de los indicadores técnicos.',
+        '- Los lags de rsi_14 y macd capturan inercia de los indicadores técnicos.',
         '\n---\n',
         '## 4. Figuras generadas',
+        '### Gráficas 2D',
         '- `13_comparacion_clasificadores.png` — AUC val vs test por modelo',
         '- `14_comparacion_regresores.png` — R² val vs test por modelo',
         '- `15_confusion_matrix.png` — Matriz de confusión del mejor clasificador',
         '- `16_roc_curve.png` — Curva ROC del mejor clasificador',
         '- `17_feature_importance_clf.png` — Importancia de features (clasificador)',
         '- `18_feature_importance_reg.png` — Importancia de features (regresor)',
-        '- `19_predicciones_vs_real.png` — Predicciones vs valores reales (regresor)',
-        '- `20_residuos.png` — Distribución de residuos (regresor)',
+        '- `19_predicciones_vs_real.png` — Scatter predicciones vs valores reales',
+        '- `20_residuos.png` — Distribución de residuos del mejor regresor',
+        '- `24_heatmap_correlacion.png` — Correlación entre features',
+        '- `25_boxplot_return_por_simbolo.png` — Distribución de Return por moneda',
+        '- `26_curva_aprendizaje_clf.png` — Curva de aprendizaje del clasificador',
+        '- `27_curva_aprendizaje_reg.png` — Curva de aprendizaje del regresor',
+        '- `28_tabla_metricas.png` — Tabla visual de métricas comparativas',
+        '- `29_scatter_matrix.png` — Scatter matrix de features principales',
+        '### Gráficas 3D',
+        '- `21_3d_features_vs_return.png` — Features vs Return en espacio 3D',
+        '- `22_3d_predicciones.png` — Real vs Predicho vs Residuo en 3D',
+        '- `23_3d_pca_clusters.png` — PCA 3D coloreado por cluster KMeans',
     ]
 
     reporte_path = REPORTS_DIR / 'supervised_report.md'
@@ -505,7 +531,7 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
     print('[ok] supervised_report.md')
 
 
-# ── Figuras ────────────────────────────────────────────────────────────────
+# ── Figuras 2D ─────────────────────────────────────────────────────────────
 
 def plot_comparacion_clasificadores(resultados_df):
     """Barras comparando AUC en val y test para los 3 clasificadores."""
@@ -619,23 +645,258 @@ def plot_residuos(pipeline, X_test, y_test, nombre):
     y_pred = pipeline.predict(X_test)
     residuos = y_test - y_pred
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-
     axes[0].hist(residuos, bins=60, color='steelblue', edgecolor='white', alpha=0.8)
     axes[0].axvline(0, color='red', linestyle='--', linewidth=1)
     axes[0].set_xlabel('Residuo (real − predicho)')
     axes[0].set_ylabel('Frecuencia')
     axes[0].set_title(f'Distribución de Residuos — {nombre}')
-
     axes[1].scatter(y_pred, residuos, alpha=0.3, s=10, color='darkorange')
     axes[1].axhline(0, color='red', linestyle='--', linewidth=1)
     axes[1].set_xlabel('Return predicho')
     axes[1].set_ylabel('Residuo')
     axes[1].set_title('Residuos vs Predicciones')
-
     plt.tight_layout()
     fig.savefig(FIGURES_DIR / '20_residuos.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print('[ok] 20_residuos.png')
+
+
+def plot_heatmap_correlacion(df, feature_cols):
+    """Heatmap de correlación entre todas las features incluyendo lags."""
+    cols_plot = [c for c in feature_cols if c in df.columns]
+    corr = df[cols_plot].corr()
+    fig, ax = plt.subplots(figsize=(14, 12))
+    im = ax.imshow(corr.values, cmap='coolwarm', vmin=-1, vmax=1)
+    ax.set_xticks(range(len(cols_plot)))
+    ax.set_yticks(range(len(cols_plot)))
+    ax.set_xticklabels(cols_plot, rotation=90, fontsize=7)
+    ax.set_yticklabels(cols_plot, fontsize=7)
+    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    ax.set_title('Mapa de Correlación — Features + Lags')
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '24_heatmap_correlacion.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 24_heatmap_correlacion.png')
+
+
+def plot_boxplot_return_por_simbolo(df):
+    """Boxplot de distribución de Return por símbolo."""
+    simbolos = df.groupby('Symbol')['Return'].median().sort_values().index
+    data_plot = [df[df['Symbol'] == s]['Return'].values for s in simbolos]
+    fig, ax = plt.subplots(figsize=(14, 6))
+    ax.boxplot(data_plot, labels=simbolos, showfliers=False, patch_artist=True,
+               boxprops=dict(facecolor='steelblue', alpha=0.6))
+    ax.axhline(0, color='red', linestyle='--', linewidth=0.8)
+    ax.set_xlabel('Símbolo')
+    ax.set_ylabel('Return diario')
+    ax.set_title('Distribución de Return por Criptomoneda (sin outliers extremos)')
+    ax.tick_params(axis='x', rotation=45)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '25_boxplot_return_por_simbolo.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 25_boxplot_return_por_simbolo.png')
+
+
+def plot_curva_aprendizaje(pipeline, X_train, y_train, nombre, fig_num, scoring):
+    """Curva de aprendizaje del pipeline dado."""
+    tscv = TimeSeriesSplit(n_splits=5)
+    train_sizes = np.linspace(0.1, 1.0, 8)
+    sizes, train_scores, val_scores = learning_curve(
+        pipeline, X_train, y_train,
+        cv=tscv, scoring=scoring,
+        train_sizes=train_sizes, n_jobs=-1,
+    )
+    train_mean = train_scores.mean(axis=1)
+    val_mean   = val_scores.mean(axis=1)
+    train_std  = train_scores.std(axis=1)
+    val_std    = val_scores.std(axis=1)
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.plot(sizes, train_mean, 'o-', color='steelblue', label='Entrenamiento')
+    ax.fill_between(sizes, train_mean - train_std, train_mean + train_std, alpha=0.15, color='steelblue')
+    ax.plot(sizes, val_mean, 'o-', color='tomato', label='Validación')
+    ax.fill_between(sizes, val_mean - val_std, val_mean + val_std, alpha=0.15, color='tomato')
+    ax.set_xlabel('Tamaño del conjunto de entrenamiento')
+    ax.set_ylabel(scoring.upper().replace('_', ' '))
+    ax.set_title(f'Curva de Aprendizaje — {nombre}')
+    ax.legend()
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / f'{fig_num}_curva_aprendizaje_{nombre.lower()[:3]}.png',
+                dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print(f'[ok] {fig_num}_curva_aprendizaje_{nombre.lower()[:3]}.png')
+
+
+def plot_tabla_metricas(res_clf, res_reg):
+    """Genera tabla visual de métricas comparativas como figura."""
+    fig, axes = plt.subplots(2, 1, figsize=(13, 6))
+
+    # Clasificadores
+    cols_clf = ['CV_AUC_mean', 'Val_Acc', 'Val_F1', 'Val_AUC', 'Test_Acc', 'Test_F1', 'Test_AUC']
+    data_clf = res_clf[cols_clf].reset_index().values
+    headers_clf = ['Modelo'] + cols_clf
+    tabla_clf = axes[0].table(
+        cellText=data_clf, colLabels=headers_clf,
+        cellLoc='center', loc='center'
+    )
+    tabla_clf.auto_set_font_size(False)
+    tabla_clf.set_fontsize(8)
+    tabla_clf.auto_set_column_width(col=list(range(len(headers_clf))))
+    axes[0].axis('off')
+    axes[0].set_title('Clasificadores', fontweight='bold', pad=10)
+
+    # Regresores
+    cols_reg = ['CV_R2_mean', 'Val_MAE', 'Val_RMSE', 'Val_R2', 'Test_MAE', 'Test_RMSE', 'Test_R2']
+    data_reg = res_reg[cols_reg].reset_index().values
+    headers_reg = ['Modelo'] + cols_reg
+    tabla_reg = axes[1].table(
+        cellText=data_reg, colLabels=headers_reg,
+        cellLoc='center', loc='center'
+    )
+    tabla_reg.auto_set_font_size(False)
+    tabla_reg.set_fontsize(8)
+    tabla_reg.auto_set_column_width(col=list(range(len(headers_reg))))
+    axes[1].axis('off')
+    axes[1].set_title('Regresores', fontweight='bold', pad=10)
+
+    plt.suptitle('Tabla Comparativa de Métricas — Modelado Supervisado', fontsize=11, y=1.01)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '28_tabla_metricas.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 28_tabla_metricas.png')
+
+
+def plot_scatter_matrix(df, feature_cols):
+    """Scatter matrix de las 5 features más importantes."""
+    cols = ['rsi_14', 'macd', 'bb_width', 'Return', 'sma_7']
+    cols = [c for c in cols if c in df.columns]
+    sample = df[cols + [TARGET_CLF]].sample(n=min(2000, len(df)), random_state=42)
+
+    fig, axes = plt.subplots(len(cols), len(cols), figsize=(12, 12))
+    colores = {0.0: 'tomato', 1.0: 'steelblue'}
+
+    for i, col_i in enumerate(cols):
+        for j, col_j in enumerate(cols):
+            ax = axes[i][j]
+            if i == j:
+                for val, color in colores.items():
+                    subset = sample[sample[TARGET_CLF] == val][col_i]
+                    ax.hist(subset, bins=30, alpha=0.5, color=color, density=True)
+            else:
+                for val, color in colores.items():
+                    subset = sample[sample[TARGET_CLF] == val]
+                    ax.scatter(subset[col_j], subset[col_i], alpha=0.2, s=5, color=color)
+            if i == len(cols) - 1:
+                ax.set_xlabel(col_j, fontsize=8)
+            if j == 0:
+                ax.set_ylabel(col_i, fontsize=8)
+            ax.tick_params(labelsize=6)
+
+    fig.suptitle('Scatter Matrix — Features principales (azul=Sube, rojo=Baja)', fontsize=11)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '29_scatter_matrix.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 29_scatter_matrix.png')
+
+
+# ── Figuras 3D ─────────────────────────────────────────────────────────────
+
+def plot_3d_features_vs_return(df):
+    """Scatter 3D: sma_7 vs rsi_14 vs macd, coloreado por Return."""
+    sample = df[['sma_7', 'rsi_14', 'macd', 'Return']].sample(
+        n=min(3000, len(df)), random_state=42
+    )
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(
+        sample['sma_7'], sample['rsi_14'], sample['macd'],
+        c=sample['Return'], cmap='RdYlGn', alpha=0.5, s=8,
+        vmin=sample['Return'].quantile(0.05),
+        vmax=sample['Return'].quantile(0.95),
+    )
+    plt.colorbar(sc, ax=ax, label='Return diario', pad=0.1)
+    ax.set_xlabel('SMA_7', fontsize=9)
+    ax.set_ylabel('RSI_14', fontsize=9)
+    ax.set_zlabel('MACD', fontsize=9)
+    ax.set_title('3D: SMA_7 vs RSI_14 vs MACD\nColoreado por Return diario', fontsize=11)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '21_3d_features_vs_return.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 21_3d_features_vs_return.png')
+
+
+def plot_3d_predicciones(pipeline, X_test, y_test, nombre):
+    """Scatter 3D: Return real vs predicho vs residuo."""
+    y_pred = pipeline.predict(X_test)
+    residuos = y_test - y_pred
+    idx = np.random.RandomState(42).choice(len(y_test), min(1000, len(y_test)), replace=False)
+
+    fig = plt.figure(figsize=(10, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    sc = ax.scatter(
+        y_test[idx], y_pred[idx], residuos[idx],
+        c=np.abs(residuos[idx]), cmap='plasma', alpha=0.5, s=10,
+    )
+    plt.colorbar(sc, ax=ax, label='|Residuo|', pad=0.1)
+    ax.set_xlabel('Return real', fontsize=9)
+    ax.set_ylabel('Return predicho', fontsize=9)
+    ax.set_zlabel('Residuo', fontsize=9)
+    ax.set_title(f'3D: Real vs Predicho vs Residuo\n{nombre}', fontsize=11)
+    # Plano residuo=0
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    xx, yy = np.meshgrid(np.linspace(*xlim, 5), np.linspace(*ylim, 5))
+    ax.plot_surface(xx, yy, np.zeros_like(xx), alpha=0.1, color='red')
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '22_3d_predicciones.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 22_3d_predicciones.png')
+
+
+def plot_3d_pca_clusters():
+    """PCA 3D de features de clustering, coloreado por cluster KMeans_K4."""
+    if not CLUSTER_PATH.exists() or not FEAT_CLUST_PATH.exists():
+        print('  [aviso] cluster_labels.csv o features_clustering.csv no encontrados — figura omitida.')
+        return
+
+    clusters = pd.read_csv(CLUSTER_PATH)
+    feats    = pd.read_csv(FEAT_CLUST_PATH)
+    merged   = feats.merge(clusters[['Symbol', 'KMeans_K4']], on='Symbol')
+
+    feat_cols = [c for c in feats.columns if c != 'Symbol']
+    X = merged[feat_cols].values
+    labels = merged['KMeans_K4'].values
+    simbolos = merged['Symbol'].values
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    pca = PCA(n_components=3, random_state=RANDOM_STATE)
+    X_pca = pca.fit_transform(X_scaled)
+    var_exp = pca.explained_variance_ratio_
+
+    colores_map = {0: 'steelblue', 1: 'tomato', 2: 'mediumseagreen', 3: 'darkorange'}
+    colores = [colores_map.get(l, 'gray') for l in labels]
+
+    fig = plt.figure(figsize=(11, 8))
+    ax = fig.add_subplot(111, projection='3d')
+    for cluster_id, color in colores_map.items():
+        mask = labels == cluster_id
+        ax.scatter(
+            X_pca[mask, 0], X_pca[mask, 1], X_pca[mask, 2],
+            c=color, label=f'Cluster {cluster_id}', alpha=0.8, s=60,
+        )
+    for i, sym in enumerate(simbolos):
+        ax.text(X_pca[i, 0], X_pca[i, 1], X_pca[i, 2], sym, fontsize=7, alpha=0.8)
+
+    ax.set_xlabel(f'PC1 ({var_exp[0]*100:.1f}%)', fontsize=9)
+    ax.set_ylabel(f'PC2 ({var_exp[1]*100:.1f}%)', fontsize=9)
+    ax.set_zlabel(f'PC3 ({var_exp[2]*100:.1f}%)', fontsize=9)
+    ax.set_title('3D PCA — Criptomonedas por Cluster KMeans (K=4)', fontsize=11)
+    ax.legend(loc='upper left', fontsize=9)
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '23_3d_pca_clusters.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 23_3d_pca_clusters.png')
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
@@ -653,7 +914,7 @@ def main():
 
     # ── Clasificadores ─────────────────────────────────────────────────────
     print('\n[supervisado] Tuning y entrenamiento de clasificadores ...')
-    res_clf, mejor_clf, mejor_clf_nombre = entrenar_clasificadores(
+    res_clf, mejor_clf, mejor_clf_nombre, pipes_clf = entrenar_clasificadores(
         train, val, test, feature_cols
     )
     print('\n  Tabla comparativa — clasificadores:')
@@ -666,7 +927,7 @@ def main():
 
     # ── Regresores ─────────────────────────────────────────────────────────
     print('\n[supervisado] Tuning y entrenamiento de regresores (target: Return) ...')
-    res_reg, mejor_reg, mejor_reg_nombre, feature_cols_reg = entrenar_regresores(
+    res_reg, mejor_reg, mejor_reg_nombre, feature_cols_reg, pipes_reg = entrenar_regresores(
         train, val, test, feature_cols
     )
     print('\n  Tabla comparativa — regresores:')
@@ -677,22 +938,39 @@ def main():
     joblib.dump(mejor_reg, MODELS_DIR / 'best_regressor.pkl')
     print('  → models/best_regressor.pkl')
 
-    # ── Figuras ────────────────────────────────────────────────────────────
-    print('\n[supervisado] Generando figuras ...')
-    plot_comparacion_clasificadores(res_clf)
-    plot_comparacion_regresores(res_reg)
-
+    # ── Arrays para figuras ────────────────────────────────────────────────
     X_test_clf = test[feature_cols].values
     y_test_clf = test[TARGET_CLF].values
+    X_train_clf = train[feature_cols].values
+    y_train_clf = train[TARGET_CLF].values
+
+    X_test_reg  = test[feature_cols_reg].values
+    y_test_reg  = test[TARGET_REG].values
+    X_train_reg = train[feature_cols_reg].values
+    y_train_reg = train[TARGET_REG].values
+
+    # ── Figuras 2D ─────────────────────────────────────────────────────────
+    print('\n[supervisado] Generando figuras 2D ...')
+    plot_comparacion_clasificadores(res_clf)
+    plot_comparacion_regresores(res_reg)
     plot_confusion_matrix(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_roc_curve(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_feature_importance(mejor_clf, feature_cols, mejor_clf_nombre, 17)
-
-    X_test_reg = test[feature_cols_reg].values
-    y_test_reg = test[TARGET_REG].values
     plot_feature_importance(mejor_reg, feature_cols_reg, mejor_reg_nombre, 18)
     plot_predicciones_vs_real(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
     plot_residuos(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
+    plot_heatmap_correlacion(df, feature_cols)
+    plot_boxplot_return_por_simbolo(df)
+    plot_curva_aprendizaje(mejor_clf, X_train_clf, y_train_clf, mejor_clf_nombre, 26, 'roc_auc')
+    plot_curva_aprendizaje(mejor_reg, X_train_reg, y_train_reg, mejor_reg_nombre, 27, 'r2')
+    plot_tabla_metricas(res_clf, res_reg)
+    plot_scatter_matrix(df, feature_cols)
+
+    # ── Figuras 3D ─────────────────────────────────────────────────────────
+    print('\n[supervisado] Generando figuras 3D ...')
+    plot_3d_features_vs_return(df)
+    plot_3d_predicciones(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
+    plot_3d_pca_clusters()
 
     # ── Reporte ────────────────────────────────────────────────────────────
     print('\n[supervisado] Generando reporte ...')

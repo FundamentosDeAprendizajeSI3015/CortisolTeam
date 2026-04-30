@@ -1,6 +1,6 @@
 # Reporte de Modelado Supervisado — Crypto ML Project
 
-**Generado:** 2026-04-29 15:35
+**Generado:** 2026-04-29 23:09
 
 ---
 
@@ -31,7 +31,7 @@
 
 ### Interpretación
 - AUC > 0.5 indica que los modelos capturan alguna señal real en los datos.
-- Predecir movimientos de criptomonedas es intrínsecamente difícil por la alta volatilidad.
+- Predecir movimientos de criptomonedas es difícil por la alta volatilidad.
 - Los features de lag aportan memoria temporal que mejora la capacidad predictiva.
 
 ---
@@ -52,19 +52,30 @@
 - Hiperparámetros: `{'reg__subsample': 0.8, 'reg__n_estimators': 200, 'reg__max_depth': 7, 'reg__learning_rate': 0.05}`
 
 ### Interpretación
-- El target es el retorno porcentual diario — variable estacionaria con sentido financiero.
+- El target es el retorno porcentual diario — variable estacionaria.
 - R² positivo en test indica que el modelo generaliza más allá del azar.
 - Return fue excluido de las features del regresor para evitar data leakage.
-- Los lags de rsi_14 y macd (t-1, t-3, t-7) capturan inercia de los indicadores técnicos.
+- Los lags de rsi_14 y macd capturan inercia de los indicadores técnicos.
 
 ---
 
 ## 4. Figuras generadas
+### Gráficas 2D
 - `13_comparacion_clasificadores.png` — AUC val vs test por modelo
 - `14_comparacion_regresores.png` — R² val vs test por modelo
 - `15_confusion_matrix.png` — Matriz de confusión del mejor clasificador
 - `16_roc_curve.png` — Curva ROC del mejor clasificador
 - `17_feature_importance_clf.png` — Importancia de features (clasificador)
 - `18_feature_importance_reg.png` — Importancia de features (regresor)
-- `19_predicciones_vs_real.png` — Predicciones vs valores reales (regresor)
-- `20_residuos.png` — Distribución de residuos (regresor)
+- `19_predicciones_vs_real.png` — Scatter predicciones vs valores reales
+- `20_residuos.png` — Distribución de residuos del mejor regresor
+- `24_heatmap_correlacion.png` — Correlación entre features
+- `25_boxplot_return_por_simbolo.png` — Distribución de Return por moneda
+- `26_curva_aprendizaje_clf.png` — Curva de aprendizaje del clasificador
+- `27_curva_aprendizaje_reg.png` — Curva de aprendizaje del regresor
+- `28_tabla_metricas.png` — Tabla visual de métricas comparativas
+- `29_scatter_matrix.png` — Scatter matrix de features principales
+### Gráficas 3D
+- `21_3d_features_vs_return.png` — Features vs Return en espacio 3D
+- `22_3d_predicciones.png` — Real vs Predicho vs Residuo en 3D
+- `23_3d_pca_clusters.png` — PCA 3D coloreado por cluster KMeans
