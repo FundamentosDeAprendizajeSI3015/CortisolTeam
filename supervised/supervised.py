@@ -15,8 +15,13 @@ Regresores (target: retorno porcentual del día siguiente):
 Mejoras aplicadas:
     - Features de lag (t-1, t-3, t-7) para memoria temporal
     - RandomizedSearchCV para tuning de hiperparámetros
+<<<<<<< HEAD
+    - Reporte completo en supervised/reports/supervised_report.md
+    - Gráficas 3D: features vs Return, predicciones 3D
+=======
     - Reporte completo en reports/supervised_report.md
     - Gráficas 3D: features vs Return, predicciones 3D, PCA+clusters
+>>>>>>> origin/desarrollo
     - Gráficas 2D: heatmap, boxplot por símbolo, curvas de aprendizaje,
       tabla de métricas, scatter matrix
 
@@ -24,6 +29,27 @@ Uso:
     python supervised/supervised.py
 
 Salidas:
+<<<<<<< HEAD
+    supervised/models/best_classifier.pkl
+    supervised/models/best_regressor.pkl
+    supervised/reports/supervised_report.md
+    supervised/reports/figures/13_comparacion_clasificadores.png
+    supervised/reports/figures/14_comparacion_regresores.png
+    supervised/reports/figures/15_confusion_matrix.png
+    supervised/reports/figures/16_roc_curve.png
+    supervised/reports/figures/17_feature_importance_clf.png
+    supervised/reports/figures/18_feature_importance_reg.png
+    supervised/reports/figures/19_predicciones_vs_real.png
+    supervised/reports/figures/20_residuos.png
+    supervised/reports/figures/21_3d_features_vs_return.png
+    supervised/reports/figures/22_3d_predicciones.png
+    supervised/reports/figures/24_heatmap_correlacion.png
+    supervised/reports/figures/25_boxplot_return_por_simbolo.png
+    supervised/reports/figures/26_curva_aprendizaje_clf.png
+    supervised/reports/figures/27_curva_aprendizaje_reg.png
+    supervised/reports/figures/28_tabla_metricas.png
+    supervised/reports/figures/29_scatter_matrix.png
+=======
     models/best_classifier.pkl
     models/best_regressor.pkl
     reports/supervised_report.md
@@ -44,6 +70,7 @@ Salidas:
     reports/figures/27_curva_aprendizaje_reg.png
     reports/figures/28_tabla_metricas.png
     reports/figures/29_scatter_matrix.png
+>>>>>>> origin/desarrollo
 """
 
 import warnings
@@ -63,7 +90,10 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV, learning_curve
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+<<<<<<< HEAD
+=======
 from sklearn.decomposition import PCA
+>>>>>>> origin/desarrollo
 from sklearn.metrics import (
     accuracy_score, f1_score, roc_auc_score,
     confusion_matrix, ConfusionMatrixDisplay, RocCurveDisplay,
@@ -74,11 +104,17 @@ from xgboost import XGBClassifier, XGBRegressor
 # ── Rutas ──────────────────────────────────────────────────────────────────
 ROOT             = Path(__file__).resolve().parent.parent
 DATA_PATH        = ROOT / 'data' / 'processed' / 'features.parquet'
+<<<<<<< HEAD
+MODELS_DIR       = ROOT / 'supervised' / 'models'
+FIGURES_DIR      = ROOT / 'supervised' / 'reports' / 'figures'
+REPORTS_DIR      = ROOT / 'supervised' / 'reports'
+=======
 CLUSTER_PATH     = ROOT / 'data' / 'cluster_labels.csv'
 FEAT_CLUST_PATH  = ROOT / 'data' / 'features_clustering.csv'
 MODELS_DIR       = ROOT / 'models'
 FIGURES_DIR      = ROOT / 'reports' / 'figures'
 REPORTS_DIR      = ROOT / 'reports'
+>>>>>>> origin/desarrollo
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -159,7 +195,11 @@ def cargar_features(path: Path) -> tuple:
     """
     if not path.exists():
         raise FileNotFoundError(
+<<<<<<< HEAD
+            f'No se encontró {path}. Ejecuta primero supervised/feature_engineering.py'
+=======
             f'No se encontró {path}. Ejecuta primero src/feature_engineering.py'
+>>>>>>> origin/desarrollo
         )
     df = pd.read_parquet(path)
     df['Date'] = pd.to_datetime(df['Date'])
@@ -523,7 +563,10 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         '### Gráficas 3D',
         '- `21_3d_features_vs_return.png` — Features vs Return en espacio 3D',
         '- `22_3d_predicciones.png` — Real vs Predicho vs Residuo en 3D',
+<<<<<<< HEAD
+=======
         '- `23_3d_pca_clusters.png` — PCA 3D coloreado por cluster KMeans',
+>>>>>>> origin/desarrollo
     ]
 
     reporte_path = REPORTS_DIR / 'supervised_report.md'
@@ -853,6 +896,8 @@ def plot_3d_predicciones(pipeline, X_test, y_test, nombre):
     print('[ok] 22_3d_predicciones.png')
 
 
+<<<<<<< HEAD
+=======
 def plot_3d_pca_clusters():
     """PCA 3D de features de clustering, coloreado por cluster KMeans_K4."""
     if not CLUSTER_PATH.exists() or not FEAT_CLUST_PATH.exists():
@@ -897,6 +942,7 @@ def plot_3d_pca_clusters():
     fig.savefig(FIGURES_DIR / '23_3d_pca_clusters.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print('[ok] 23_3d_pca_clusters.png')
+>>>>>>> origin/desarrollo
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
@@ -923,7 +969,11 @@ def main():
 
     print(f'\n[supervisado] Guardando mejor clasificador ({mejor_clf_nombre}) ...')
     joblib.dump(mejor_clf, MODELS_DIR / 'best_classifier.pkl')
+<<<<<<< HEAD
+    print('  → supervised/models/best_classifier.pkl')
+=======
     print('  → models/best_classifier.pkl')
+>>>>>>> origin/desarrollo
 
     # ── Regresores ─────────────────────────────────────────────────────────
     print('\n[supervisado] Tuning y entrenamiento de regresores (target: Return) ...')
@@ -936,7 +986,11 @@ def main():
 
     print(f'\n[supervisado] Guardando mejor regresor ({mejor_reg_nombre}) ...')
     joblib.dump(mejor_reg, MODELS_DIR / 'best_regressor.pkl')
+<<<<<<< HEAD
+    print('  → supervised/models/best_regressor.pkl')
+=======
     print('  → models/best_regressor.pkl')
+>>>>>>> origin/desarrollo
 
     # ── Arrays para figuras ────────────────────────────────────────────────
     X_test_clf = test[feature_cols].values
@@ -970,7 +1024,10 @@ def main():
     print('\n[supervisado] Generando figuras 3D ...')
     plot_3d_features_vs_return(df)
     plot_3d_predicciones(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
+<<<<<<< HEAD
+=======
     plot_3d_pca_clusters()
+>>>>>>> origin/desarrollo
 
     # ── Reporte ────────────────────────────────────────────────────────────
     print('\n[supervisado] Generando reporte ...')

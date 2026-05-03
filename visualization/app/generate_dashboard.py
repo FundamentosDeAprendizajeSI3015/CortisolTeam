@@ -1,0 +1,575 @@
+"""
+Dashboard Interactivo HTML — Crypto ML Project
+Genera un dashboard HTML interactivo para visualizar todas las graficas.
+
+Uso:
+    python visualization/app/generate_dashboard.py
+
+Salida:
+    visualization/app/dashboard.html — pagina interactiva con todas las visualizaciones
+"""
+
+from pathlib import Path
+import sys
+
+# ──────────────────────────────────────────────────────────────────────────────
+# CONFIGURACION
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Ruta de salida
+OUTPUT_DIR = Path(__file__).resolve().parent.parent / "outputs"
+DASHBOARD_PATH = Path(__file__).resolve().parent / "dashboard.html"
+
+# Informacion de las visualizaciones
+VISUALIZACIONES = [
+    {
+        'titulo': 'Series de Tiempo de Precios',
+        'archivo': '01_price_timeseries.png',
+        'descripcion': 'Evolucion historica de los precios de cierre para BTC, ETH y BNB.'
+    },
+    {
+        'titulo': 'Precios Normalizados',
+        'archivo': '02_price_normalized.png',
+        'descripcion': 'Comparacion del crecimiento relativo de las monedas (base = 100).'
+    },
+    {
+        'titulo': 'Distribucion de Retornos',
+        'archivo': '03_returns_distribution.png',
+        'descripcion': 'Histogramas de retornos diarios con distribucion normal superpuesta.'
+    },
+    {
+        'titulo': 'Correlacion de Retornos',
+        'archivo': '04_correlation_heatmap.png',
+        'descripcion': 'Matriz de correlacion de Pearson entre retornos diarios de todas las monedas.'
+    },
+    {
+        'titulo': 'Analisis de Volumen',
+        'archivo': '05_volume_analysis.png',
+        'descripcion': 'Volumen de trading en escala logaritmica para monedas principales.'
+    },
+    {
+        'titulo': 'Rolling Volatility',
+        'archivo': '09_rolling_volatility.png',
+        'descripcion': 'Evolucion temporal de volatilidad rodante a 30 y 90 dias para BTC, ETH y BNB.'
+    },
+    {
+        'titulo': 'Seasonality Mensual',
+        'archivo': '10_seasonality_month.png',
+        'descripcion': 'Retorno promedio por mes para identificar patrones estacionales en cada moneda.'
+    },
+    {
+        'titulo': 'Seasonality por Dia de Semana',
+        'archivo': '11_seasonality_dayofweek.png',
+        'descripcion': 'Retorno promedio por dia de semana para comparar efectos temporales recurrentes.'
+    },
+    {
+        'titulo': 'Deteccion de Outliers',
+        'archivo': '12_outliers_btc_returns.png',
+        'descripcion': 'Outliers en retornos diarios de BTC detectados con Z-Score e IQR.'
+    },
+    {
+        'titulo': 'Seleccion de K',
+        'archivo': '13_k_selection_metrics.png',
+        'descripcion': 'Comparacion de Metodo del Codo, Silhouette y Davies-Bouldin para elegir K.'
+    },
+    {
+        'titulo': 'Visualizacion PCA — Clustering',
+        'archivo': '06_pca_clustering.png',
+        'descripcion': 'Proyeccion 2D de clusters en espacio PCA (diferentes algoritmos).'
+    },
+    {
+        'titulo': 'Heatmap de Features',
+        'archivo': '07_features_heatmap.png',
+        'descripcion': 'Features normalizadas por moneda, coloreadas por cluster K4.'
+    },
+    {
+        'titulo': 'Estadisticas por Cluster',
+        'archivo': '08_cluster_statistics.png',
+        'descripcion': 'Distribucion de features por cluster usando boxplots.'
+    }
+]
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PLANTILLA HTML
+# ──────────────────────────────────────────────────────────────────────────────
+
+def generar_html() -> str:
+    """
+    Genera el codigo HTML del dashboard interactivo.
+    
+    Returns:
+        String con el codigo HTML completo
+    """
+    
+    html = """<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Interactivo — Crypto ML Project</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+            letter-spacing: 1px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.95;
+            margin-bottom: 5px;
+        }
+        
+        .header .subtitle {
+            font-size: 0.95em;
+            opacity: 0.85;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e0e0e0;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .nav-tabs button {
+            flex: 1;
+            padding: 15px 20px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            color: #555;
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .nav-tabs button:hover {
+            background: #f0f0f0;
+            color: #667eea;
+        }
+        
+        .nav-tabs button.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .content {
+            padding: 40px;
+            display: grid;
+            gap: 40px;
+        }
+        
+        .section {
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section-title {
+            font-size: 1.8em;
+            color: #333;
+            margin-bottom: 10px;
+            font-weight: 700;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        
+        .visualization {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 30px;
+        }
+        
+        .visualization:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .visualization-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+        }
+        
+        .visualization-header h3 {
+            font-size: 1.3em;
+            margin-bottom: 5px;
+        }
+        
+        .visualization-header p {
+            font-size: 0.95em;
+            opacity: 0.9;
+            margin: 0;
+        }
+        
+        .visualization-body {
+            padding: 0;
+            overflow: auto;
+        }
+        
+        .visualization-body img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        .placeholder-box {
+            background: #f7f9fc;
+            border: 2px dashed #9fb3d9;
+            border-radius: 10px;
+            padding: 26px;
+            color: #2c3e63;
+            font-size: 1.05em;
+            line-height: 1.6;
+        }
+        
+        .footer {
+            background: #f8f9fa;
+            padding: 30px;
+            text-align: center;
+            border-top: 2px solid #e0e0e0;
+            color: #666;
+            font-size: 0.9em;
+        }
+        
+        .footer a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8em;
+            }
+            
+            .nav-tabs button {
+                font-size: 0.85em;
+                padding: 12px 15px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- HEADER -->
+        <div class="header">
+            <h1>Dashboard Interactivo</h1>
+            <p>Crypto ML Project — Analisis de Criptomonedas</p>
+            <div class="subtitle">Visualizaciones de EDA, Modelo No Supervisado y Modelo Supervisado</div>
+        </div>
+        
+        <!-- TABS DE NAVEGACION -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="mostrarSeccion(0)">
+                Analisis Exploratorio (EDA)
+            </button>
+            <button class="tab-btn" onclick="mostrarSeccion(1)">
+                Modelo No Supervisado
+            </button>
+            <button class="tab-btn" onclick="mostrarSeccion(2)">
+                Modelo Supervisado
+            </button>
+        </div>
+        
+        <!-- CONTENIDO -->
+        <div class="content">
+            <!-- SECCION 1: EDA -->
+            <div class="section active" id="seccion-0">
+                <h2 class="section-title">Analisis Exploratorio de Datos (EDA)</h2>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Series de Tiempo de Precios</h3>
+                        <p>Evolucion historica de los precios de cierre para BTC, ETH y BNB en USD</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/01_price_timeseries.png" alt="Series de Tiempo">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Precios Normalizados</h3>
+                        <p>Comparacion del crecimiento relativo de las monedas (base = 100 al inicio)</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/02_price_normalized.png" alt="Precios Normalizados">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Distribucion de Retornos Diarios</h3>
+                        <p>Histogramas de retornos con distribucion normal superpuesta para identificar patrones</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/03_returns_distribution.png" alt="Distribucion de Retornos">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Matriz de Correlacion</h3>
+                        <p>Correlacion de Pearson entre retornos diarios de todas las criptomonedas</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/04_correlation_heatmap.png" alt="Correlacion">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Analisis de Volumen de Trading</h3>
+                        <p>Volumen de transacciones en escala logaritmica para capturar variaciones amplias</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/05_volume_analysis.png" alt="Volumen">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Rolling Volatility (30d y 90d)</h3>
+                        <p>Evolucion temporal de la volatilidad para identificar periodos de mayor riesgo</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/09_rolling_volatility.png" alt="Rolling Volatility">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Seasonality Mensual</h3>
+                        <p>Retorno promedio por mes para detectar estacionalidad en BTC, ETH y BNB</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/10_seasonality_month.png" alt="Seasonality Mensual">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Seasonality por Dia de Semana</h3>
+                        <p>Retorno promedio por dia para evaluar patrones semanales de mercado</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/11_seasonality_dayofweek.png" alt="Seasonality Dia Semana">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Deteccion de Outliers en Retornos BTC</h3>
+                        <p>Eventos extremos detectados con metodos Z-Score e IQR para analizar shocks de mercado</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/12_outliers_btc_returns.png" alt="Outliers BTC">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- SECCION 2: NO SUPERVISADO -->
+            <div class="section" id="seccion-1">
+                <h2 class="section-title">Resultados del Modelo No Supervisado</h2>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Seleccion de K</h3>
+                        <p>Comparacion de codo, silhouette y Davies-Bouldin para soportar la eleccion del K optimo</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/13_k_selection_metrics.png" alt="K Selection Metrics">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Visualizacion en Espacio PCA</h3>
+                        <p>Proyeccion 2D de clusters usando PCA (K-Means K2, K4, DBSCAN, Agglomerative)</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/06_pca_clustering.png" alt="PCA Clustering">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Heatmap de Features por Moneda</h3>
+                        <p>Features normalizadas organizadas por cluster K4 (volatility, sharpe ratio, etc)</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/07_features_heatmap.png" alt="Features Heatmap">
+                    </div>
+                </div>
+                
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Estadisticas por Cluster</h3>
+                        <p>Distribucion de features para cada cluster usando boxplots (media, mediana, rango)</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../outputs/08_cluster_statistics.png" alt="Cluster Statistics">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCION 3: SUPERVISADO -->
+            <div class="section" id="seccion-2">
+                <h2 class="section-title">Resultados del Modelo Supervisado</h2>
+
+                <div class="placeholder-box">
+                    Esta seccion queda reservada para los resultados del modelo supervisado.
+                    Aun no hay graficas disponibles en esta etapa del proyecto.
+                </div>
+            </div>
+        </div>
+        
+        <!-- FOOTER -->
+        <div class="footer">
+            <p>Dashboard generado automaticamente por <strong>Crypto ML Project</strong></p>
+            <p>Ultima actualizacion: <span id="fecha"></span></p>
+        </div>
+    </div>
+    
+    <script>
+        // Funcion para cambiar de seccion
+        function mostrarSeccion(indice) {
+            // Ocultar todas las secciones
+            const secciones = document.querySelectorAll('.section');
+            secciones.forEach(s => s.classList.remove('active'));
+            
+            // Desactivar todos los botones
+            const botones = document.querySelectorAll('.tab-btn');
+            botones.forEach(b => b.classList.remove('active'));
+            
+            // Mostrar seccion seleccionada
+            document.getElementById(`seccion-${indice}`).classList.add('active');
+            botones[indice].classList.add('active');
+            
+            // Scroll al inicio
+            window.scrollTo(0, 0);
+        }
+        
+        // Establecer fecha actual
+        document.getElementById('fecha').textContent = new Date().toLocaleString('es-ES');
+    </script>
+</body>
+</html>"""
+    
+    return html
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+# FUNCION PRINCIPAL
+# ──────────────────────────────────────────────────────────────────────────────
+
+def main():
+    """
+    Funcion principal que genera el dashboard HTML.
+    """
+    print("\n" + "="*70)
+    print(" GENERADOR DE DASHBOARD HTML — Crypto ML Project")
+    print("="*70 + "\n")
+    
+    # Validar que exista el directorio de outputs
+    if not OUTPUT_DIR.exists():
+        print(f"[ERROR] No se encontro el directorio: {OUTPUT_DIR}")
+        print("[INFO] Ejecuta primero: python visualization/app/visualize.py")
+        sys.exit(1)
+    
+    # Validar que existan todas las imagenes
+    print("[VALIDACION] Verificando visualizaciones...")
+    imagenes_faltantes = []
+    
+    for viz in VISUALIZACIONES:
+        img_path = OUTPUT_DIR / viz['archivo']
+        if not img_path.exists():
+            imagenes_faltantes.append(viz['archivo'])
+            print(f"[AVISO] No encontrado: {viz['archivo']}")
+        else:
+            print(f"[OK] Encontrado: {viz['archivo']}")
+    
+    if imagenes_faltantes:
+        print(f"\n[ERROR] Faltan {len(imagenes_faltantes)} visualizaciones.")
+        print("[INFO] Ejecuta primero: python visualization/app/visualize.py")
+        sys.exit(1)
+    
+    # Generar HTML
+    print("\n[GENERACION] Creando dashboard HTML...")
+    html_content = generar_html()
+    
+    # Guardar archivo
+    try:
+        with open(DASHBOARD_PATH, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        print(f"[OK] Dashboard guardado: {DASHBOARD_PATH}")
+    except Exception as e:
+        print(f"[ERROR] No se pudo guardar el dashboard: {e}")
+        sys.exit(1)
+    
+    print("\n" + "="*70)
+    print(" COMPLETADO: Dashboard generado exitosamente.")
+    print(f" Ubicacion: {DASHBOARD_PATH}")
+    print(" Abre el archivo en tu navegador para visualizarlo.")
+    print("="*70 + "\n")
+
+
+if __name__ == '__main__':
+    main()

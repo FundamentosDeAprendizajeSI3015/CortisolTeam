@@ -3,7 +3,11 @@
 Agrega indicadores técnicos y crea el target de clasificación binaria.
 
 Uso:
+<<<<<<< HEAD
+    python supervised/feature_engineering.py
+=======
     python src/feature_engineering.py
+>>>>>>> origin/desarrollo
 
 Salida:
     data/processed/features.parquet
