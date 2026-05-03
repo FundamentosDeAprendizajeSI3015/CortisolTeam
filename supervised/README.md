@@ -95,10 +95,16 @@ pip install xgboost scikit-learn joblib matplotlib seaborn pyarrow
 ### Input
 ```
 data/processed/features.parquet     # generado por feature_engineering.py
+<<<<<<< HEAD
+=======
+data/cluster_labels.csv             # generado por unsupervised/clustering.py
+data/features_clustering.csv        # generado por unsupervised/clustering.py
+>>>>>>> origin/desarrollo
 ```
 
 ### Outputs
 ```
+<<<<<<< HEAD
 supervised/models/best_classifier.pkl
 supervised/models/best_regressor.pkl
 supervised/reports/supervised_report.md
@@ -118,6 +124,28 @@ supervised/reports/figures/26_curva_aprendizaje_clf.png
 supervised/reports/figures/27_curva_aprendizaje_reg.png
 supervised/reports/figures/28_tabla_metricas.png
 supervised/reports/figures/29_scatter_matrix.png
+=======
+models/best_classifier.pkl
+models/best_regressor.pkl
+reports/supervised_report.md
+reports/figures/13_comparacion_clasificadores.png
+reports/figures/14_comparacion_regresores.png
+reports/figures/15_confusion_matrix.png
+reports/figures/16_roc_curve.png
+reports/figures/17_feature_importance_clf.png
+reports/figures/18_feature_importance_reg.png
+reports/figures/19_predicciones_vs_real.png
+reports/figures/20_residuos.png
+reports/figures/21_3d_features_vs_return.png
+reports/figures/22_3d_predicciones.png
+reports/figures/23_3d_pca_clusters.png
+reports/figures/24_heatmap_correlacion.png
+reports/figures/25_boxplot_return_por_simbolo.png
+reports/figures/26_curva_aprendizaje_clf.png
+reports/figures/27_curva_aprendizaje_reg.png
+reports/figures/28_tabla_metricas.png
+reports/figures/29_scatter_matrix.png
+>>>>>>> origin/desarrollo
 ```
 
 ---
@@ -147,6 +175,10 @@ supervised/reports/figures/29_scatter_matrix.png
 |--------|-------------|
 | `21_3d_features_vs_return.png` | SMA_7 vs RSI_14 vs MACD coloreado por Return |
 | `22_3d_predicciones.png` | Return real vs predicho vs residuo en 3D |
+<<<<<<< HEAD
+=======
+| `23_3d_pca_clusters.png` | PCA 3D de criptomonedas coloreado por cluster KMeans K=4 |
+>>>>>>> origin/desarrollo
 
 ---
 
@@ -154,10 +186,15 @@ supervised/reports/figures/29_scatter_matrix.png
 
 ```
 supervised/
+<<<<<<< HEAD
 ├── feature_engineering.py
 ├── supervised.py
 ├── models/
 ├── reports/
 │   └── figures/
 └── README.md
+=======
+├── supervised.py     # pipeline completo
+└── README.md         # este archivo
+>>>>>>> origin/desarrollo
 ```
