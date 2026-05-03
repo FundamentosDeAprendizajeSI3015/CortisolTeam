@@ -13,9 +13,9 @@ Proyecto de Machine Learning sobre criptomonedas. Abarca desde la ingesta de dat
 | 01 | `feature/load-data` | `load_data/` | Completado |
 | 02 | `feature/eda` | `eda/` | Completado |
 | 03 | `feature/unsupervised` | `unsupervised/` | Completado |
-| 04 | `feature/supervised` | `supervised/` | En progreso |
-| 05 | `feature/visualization` | `visualization/` | Pendiente |
-| 06 | `feature/scoring` | `scoring/` | Pendiente |
+| 04 | `feature/supervised` | `supervised/` | Completado |
+| 05 | `feature/visualization` | `visualization/` | Completado |
+| 06 | `feature/scoring` | `scoring/` | Completado |
 
 ---
 
@@ -26,9 +26,9 @@ Proyecto de Machine Learning sobre criptomonedas. Abarca desde la ingesta de dat
 ├── load_data/                  # ingesta y validacion del dataset
 ├── eda/                        # analisis exploratorio
 ├── unsupervised/               # clustering (K-Means, DBSCAN, Agglomerative)
-├── supervised/                 # clasificacion y regresion (en progreso)
-├── visualization/              # dashboard interactivo (pendiente)
-├── scoring/                    # evaluacion final y backtesting (pendiente)
+├── supervised/                 # clasificacion y regresion
+├── visualization/              # dashboard interactivo (EDA + modelos)
+├── scoring/                    # evaluacion final y backtesting
 └── requirements.txt
 ```
 
@@ -41,6 +41,25 @@ pip install -r requirements.txt
 ```
 
 Cada fase tiene su propia carpeta con un script principal y un README con instrucciones especificas.
+
+---
+
+## Dashboard interactivo
+
+El dashboard integra EDA, modelo no supervisado, modelo supervisado y scoring en una sola vista.
+
+Ejecuta:
+
+```bash
+python visualization/app/main.py
+```
+
+Salida principal:
+
+- visualization/app/dashboard.html
+- visualization/outputs/ (graficas EDA y clustering)
+- supervised/reports/figures/ (graficas supervisadas)
+- scoring/reports/figures/ (graficas de scoring)
 
 ---
 
