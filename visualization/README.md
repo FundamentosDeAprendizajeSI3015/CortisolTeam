@@ -6,8 +6,9 @@ Modulo para generar visualizaciones de EDA y clustering, y construir un dashboar
 
 - Scripts del modulo: `app/visualize.py`, `app/generate_dashboard.py`, `app/main.py`
 - Salida principal: `visualization/app/dashboard.html` y figuras en `visualization/outputs/`
-- Total de visualizaciones activas: 13 PNG
+- Total de visualizaciones activas: 13 PNG (EDA + clustering) + figuras supervisadas y de scoring
 - Datos de entrada: `data/crypto_raw.csv`, `data/features_clustering.csv`, `data/cluster_labels.csv`
+- Fuentes adicionales: `supervised/reports/figures/`, `scoring/reports/figures/`, `scoring/reports/metrics_summary.csv`, `scoring/reports/model_report.pdf`
 
 ## Graficas generadas y que muestra cada una
 
@@ -29,6 +30,35 @@ Modulo para generar visualizaciones de EDA y clustering, y construir un dashboar
 - `06_pca_clustering.png`: proyeccion PCA 2D de clusters para varios algoritmos.
 - `07_features_heatmap.png`: mapa de calor de features normalizadas por moneda y cluster.
 - `08_cluster_statistics.png`: boxplots de features para comparar perfiles entre clusters.
+
+### Supervisado
+
+- `13_comparacion_clasificadores.png`: AUC val vs test por clasificador.
+- `14_comparacion_regresores.png`: R2 val vs test por regresor.
+- `15_confusion_matrix.png`: matriz de confusion del mejor clasificador.
+- `16_roc_curve.png`: curva ROC del mejor clasificador.
+- `17_feature_importance_ran.png`: importancia de features del clasificador.
+- `18_feature_importance_xgb.png`: importancia de features del regresor.
+- `19_predicciones_vs_real.png`: predicho vs real para el regresor.
+- `20_residuos.png`: distribucion y dispersion de residuos.
+- `21_3d_features_vs_return.png`: relacion 3D entre features y return.
+- `22_3d_predicciones.png`: real vs predicho vs residuo en 3D.
+- `24_heatmap_correlacion.png`: correlacion entre features y lags.
+- `25_boxplot_return_por_simbolo.png`: distribucion de return por simbolo.
+- `26_curva_aprendizaje_log.png`: curva de aprendizaje del clasificador.
+- `27_curva_aprendizaje_xgb.png`: curva de aprendizaje del regresor.
+- `28_tabla_metricas.png`: tabla comparativa de metricas.
+- `29_scatter_matrix.png`: matriz de dispersion de features.
+
+### Scoring
+
+- `17_scoring_clf_comparison.png`: comparacion final de clasificadores.
+- `18_scoring_confusion_matrices.png`: matrices de confusion.
+- `19_scoring_roc_curves.png`: curvas ROC comparativas.
+- `20_scoring_regression_scatter.png`: predicho vs real en regresion.
+- `21_scoring_residuals.png`: diagnostico de residuos.
+- `22_scoring_clustering_metrics.png`: metricas de clustering.
+- `23_scoring_backtest.png`: backtesting de estrategia vs buy & hold.
 
 ## Requisitos
 
@@ -59,7 +89,7 @@ python visualization/app/main.py
 ### Dashboard interactivo
 
 - Archivo: `visualization/app/dashboard.html`
-- Navegacion por secciones: EDA, No Supervisado y Supervisado (placeholder).
+- Navegacion por secciones: EDA, No Supervisado, Supervisado y Scoring.
 - Incluye tarjetas con descripcion y fecha de actualizacion automatica.
 - Compatible con escritorio y movil.
 

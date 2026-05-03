@@ -109,6 +109,18 @@ def generar_html() -> str:
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Interactivo — Crypto ML Project</title>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-1: #f9f5ef;
+            --bg-2: #e6f6ff;
+            --accent: #0ea5a4;
+            --accent-dark: #0f766e;
+            --ink: #1f2937;
+            --muted: #55636f;
+            --card: #ffffff;
+            --border: #e5e7eb;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -116,30 +128,34 @@ def generar_html() -> str:
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Space Grotesk', sans-serif;
+            background:
+                radial-gradient(900px 600px at -10% -20%, #fff1da 0%, transparent 60%),
+                radial-gradient(800px 520px at 110% 0%, #dff6ff 0%, transparent 55%),
+                linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 100%);
             min-height: 100vh;
             padding: 20px;
-            color: #333;
+            color: var(--ink);
         }
         
         .container {
             max-width: 1400px;
             margin: 0 auto;
-            background: white;
+            background: var(--card);
             border-radius: 15px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
             overflow: hidden;
         }
         
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #0f766e 0%, #0ea5a4 45%, #38bdf8 100%);
             color: white;
             padding: 40px;
             text-align: center;
         }
         
         .header h1 {
+            font-family: 'Fraunces', serif;
             font-size: 2.5em;
             margin-bottom: 10px;
             font-weight: 700;
@@ -181,13 +197,13 @@ def generar_html() -> str:
         
         .nav-tabs button:hover {
             background: #f0f0f0;
-            color: #667eea;
+            color: var(--accent-dark);
         }
         
         .nav-tabs button.active {
-            color: #667eea;
-            border-bottom-color: #667eea;
-            background: #f0f0ff;
+            color: var(--accent-dark);
+            border-bottom-color: var(--accent);
+            background: #ecfeff;
         }
         
         .content {
@@ -212,11 +228,17 @@ def generar_html() -> str:
         
         .section-title {
             font-size: 1.8em;
-            color: #333;
+            color: var(--ink);
             margin-bottom: 10px;
             font-weight: 700;
             padding-bottom: 10px;
-            border-bottom: 3px solid #667eea;
+            border-bottom: 3px solid var(--accent);
+        }
+
+        .section-intro {
+            color: var(--muted);
+            font-size: 1.05em;
+            margin: 8px 0 24px;
         }
         
         .visualization {
@@ -234,7 +256,7 @@ def generar_html() -> str:
         }
         
         .visualization-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, var(--accent-dark) 0%, var(--accent) 100%);
             color: white;
             padding: 20px;
         }
@@ -270,6 +292,26 @@ def generar_html() -> str:
             font-size: 1.05em;
             line-height: 1.6;
         }
+
+        .note-card {
+            background: #f3fbfb;
+            border: 1px solid #cde8e6;
+            border-radius: 12px;
+            padding: 18px 22px;
+            margin-bottom: 26px;
+            color: #1f3b3a;
+            font-size: 1.02em;
+        }
+
+        .note-card a {
+            color: var(--accent-dark);
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .note-card a:hover {
+            text-decoration: underline;
+        }
         
         .footer {
             background: #f8f9fa;
@@ -281,7 +323,7 @@ def generar_html() -> str:
         }
         
         .footer a {
-            color: #667eea;
+            color: var(--accent-dark);
             text-decoration: none;
             font-weight: 600;
         }
@@ -312,7 +354,7 @@ def generar_html() -> str:
         <div class="header">
             <h1>Dashboard Interactivo</h1>
             <p>Crypto ML Project — Analisis de Criptomonedas</p>
-            <div class="subtitle">Visualizaciones de EDA, Modelo No Supervisado y Modelo Supervisado</div>
+            <div class="subtitle">Visualizaciones de EDA, Modelo No Supervisado, Modelo Supervisado y Scoring</div>
         </div>
         
         <!-- TABS DE NAVEGACION -->
@@ -325,6 +367,9 @@ def generar_html() -> str:
             </button>
             <button class="tab-btn" onclick="mostrarSeccion(2)">
                 Modelo Supervisado
+            </button>
+            <button class="tab-btn" onclick="mostrarSeccion(3)">
+                Scoring
             </button>
         </div>
         
@@ -474,9 +519,250 @@ def generar_html() -> str:
             <div class="section" id="seccion-2">
                 <h2 class="section-title">Resultados del Modelo Supervisado</h2>
 
-                <div class="placeholder-box">
-                    Esta seccion queda reservada para los resultados del modelo supervisado.
-                    Aun no hay graficas disponibles en esta etapa del proyecto.
+                <p class="section-intro">Resumen de clasificacion y regresion con curvas de aprendizaje y diagnosticos clave.</p>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Tabla Comparativa de Metricas</h3>
+                        <p>Resumen consolidado de resultados en validacion y test.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/28_tabla_metricas.png" alt="Tabla de metricas">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Comparacion de Clasificadores</h3>
+                        <p>ROC-AUC en validacion y test para Logistic, RandomForest y XGBoost.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/13_comparacion_clasificadores.png" alt="Comparacion clasificadores">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Comparacion de Regresores</h3>
+                        <p>R2 en validacion y test para Ridge, RandomForest y XGBoost.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/14_comparacion_regresores.png" alt="Comparacion regresores">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Matriz de Confusion (Clasificador)</h3>
+                        <p>Desempeno del mejor clasificador en el conjunto de test.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/15_confusion_matrix.png" alt="Matriz de confusion">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Curva ROC (Clasificador)</h3>
+                        <p>Comparacion de sensibilidad vs especificidad en test.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/16_roc_curve.png" alt="Curva ROC">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Curva de Aprendizaje — Logistic Regression</h3>
+                        <p>Evolucion del rendimiento del clasificador con mas datos.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/26_curva_aprendizaje_log.png" alt="Curva aprendizaje clasificador">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Curva de Aprendizaje — XGBRegressor</h3>
+                        <p>Impacto del tamano de entrenamiento en el regresor.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/27_curva_aprendizaje_xgb.png" alt="Curva aprendizaje regresor">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Importancia de Features — Clasificador</h3>
+                        <p>Ranking de variables para explicar sube/baja.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/17_feature_importance_ran.png" alt="Importancia de features clasificador">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Importancia de Features — Regresor</h3>
+                        <p>Variables con mayor impacto en la prediccion de retorno.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/18_feature_importance_xgb.png" alt="Importancia de features regresor">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Predicciones vs Real</h3>
+                        <p>Comparacion directa entre retorno real y estimado.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/19_predicciones_vs_real.png" alt="Predicciones vs real">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Distribucion de Residuos</h3>
+                        <p>Diagnostico de errores del mejor regresor.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/20_residuos.png" alt="Distribucion de residuos">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Scatter Matrix de Features</h3>
+                        <p>Relacion entre variables clave y la clase objetivo.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/29_scatter_matrix.png" alt="Scatter matrix">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Heatmap de Correlacion (Features + Lags)</h3>
+                        <p>Dependencias entre indicadores tecnicos y lags temporales.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/24_heatmap_correlacion.png" alt="Heatmap correlacion">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Distribucion de Return por Simbolo</h3>
+                        <p>Boxplot de retornos diarios sin outliers extremos.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/25_boxplot_return_por_simbolo.png" alt="Boxplot return por simbolo">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>3D: Features vs Return</h3>
+                        <p>Relaciones no lineales entre indicadores y retorno.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/21_3d_features_vs_return.png" alt="3D features vs return">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>3D: Real vs Predicho vs Residuo</h3>
+                        <p>Visualizacion 3D de error del regresor.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../supervised/reports/figures/22_3d_predicciones.png" alt="3D real vs predicho">
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCION 4: SCORING -->
+            <div class="section" id="seccion-3">
+                <h2 class="section-title">Scoring y Resultados Finales</h2>
+
+                <p class="section-intro">Metricas estandarizadas, comparaciones finales y backtesting.</p>
+
+                <div class="note-card">
+                    <strong>Archivos clave:</strong>
+                    <a href="../../scoring/reports/metrics_summary.csv" target="_blank" rel="noopener">metrics_summary.csv</a>
+                    &middot;
+                    <a href="../../scoring/reports/model_report.pdf" target="_blank" rel="noopener">model_report.pdf</a>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Comparacion de Clasificacion</h3>
+                        <p>Metricas principales para todos los clasificadores en test.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/17_scoring_clf_comparison.png" alt="Scoring clasificacion">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Matrices de Confusion</h3>
+                        <p>Resumen visual del desempeno por clase.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/18_scoring_confusion_matrices.png" alt="Scoring matrices confusion">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>ROC Curves</h3>
+                        <p>Comparacion de tradeoff TPR/FPR entre modelos.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/19_scoring_roc_curves.png" alt="Scoring ROC curves">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Regresion: Predicho vs Real</h3>
+                        <p>Dispersion de predicciones y linea de referencia.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/20_scoring_regression_scatter.png" alt="Scoring regresion scatter">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Regresion: Residuos</h3>
+                        <p>Distribucion de errores para validar supuestos.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/21_scoring_residuals.png" alt="Scoring residuos">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Metricas de Clustering</h3>
+                        <p>Silhouette, Davies-Bouldin y Calinski-Harabasz.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/22_scoring_clustering_metrics.png" alt="Scoring clustering metrics">
+                    </div>
+                </div>
+
+                <div class="visualization">
+                    <div class="visualization-header">
+                        <h3>Backtesting</h3>
+                        <p>Comparacion de estrategia del modelo vs buy & hold.</p>
+                    </div>
+                    <div class="visualization-body">
+                        <img src="../../scoring/reports/figures/23_scoring_backtest.png" alt="Scoring backtesting">
+                    </div>
                 </div>
             </div>
         </div>
