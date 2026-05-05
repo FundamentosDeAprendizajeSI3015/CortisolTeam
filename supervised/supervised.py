@@ -89,9 +89,10 @@ BASE_FEATURE_COLS = [
     'ema_14', 'rsi_14',
     'bb_high', 'bb_low', 'bb_width',
     'macd', 'macd_signal',
+    'atr_14', 'stoch_k', 'stoch_d', 'williams_r', 'obv',
     'Return',
 ]
-LAG_COLS_SOURCE = ['Return', 'rsi_14', 'macd']
+LAG_COLS_SOURCE = ['Return', 'rsi_14', 'macd', 'atr_14']
 LAG_PERIODS     = [1, 3, 7]
 
 TARGET_CLF    = 'target'
