@@ -67,6 +67,7 @@ from sklearn.decomposition import PCA
 from sklearn.metrics import (
     accuracy_score, f1_score, roc_auc_score,
     confusion_matrix, ConfusionMatrixDisplay, RocCurveDisplay,
+    precision_recall_curve, average_precision_score,
     mean_absolute_error, mean_squared_error, r2_score,
 )
 from xgboost import XGBClassifier, XGBRegressor
@@ -519,6 +520,7 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         '- `14_comparacion_regresores.png` — R² val vs test por modelo',
         '- `15_confusion_matrix.png` — Matriz de confusión del mejor clasificador',
         '- `16_roc_curve.png` — Curva ROC del mejor clasificador',
+        '- `30_precision_recall.png` — Curva Precision-Recall con Average Precision y baseline',
         '- `17_feature_importance_clf.png` — Importancia de features (clasificador)',
         '- `18_feature_importance_reg.png` — Importancia de features (regresor)',
         '- `19_predicciones_vs_real.png` — Scatter predicciones vs valores reales',
@@ -610,6 +612,35 @@ def plot_roc_curve(pipeline, X_test, y_test, nombre):
     fig.savefig(FIGURES_DIR / '16_roc_curve.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print('[ok] 16_roc_curve.png')
+
+
+def plot_precision_recall(pipeline, X_test, y_test, nombre):
+    """Curva Precision-Recall del mejor clasificador con baseline de clase positiva."""
+    try:
+        y_proba = pipeline.predict_proba(X_test)[:, 1]
+    except AttributeError:
+        print(f'  [{nombre}] no tiene predict_proba — curva PR omitida.')
+        return
+
+    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+    ap = average_precision_score(y_test, y_proba)
+    baseline = float(y_test.mean())
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(recall, precision, color='steelblue', linewidth=1.5,
+            label=f'{nombre} (AP = {ap:.2f})')
+    ax.axhline(baseline, color='red', linestyle='--', linewidth=1,
+               label=f'Baseline (positivos = {baseline:.2f})')
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.05])
+    ax.set_title(f'Curva Precision-Recall — {nombre}')
+    ax.legend(loc='upper right')
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '30_precision_recall.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 30_precision_recall.png')
 
 
 def plot_feature_importance(pipeline, feature_cols, nombre, fig_num):
@@ -963,6 +994,7 @@ def main():
     plot_comparacion_regresores(res_reg)
     plot_confusion_matrix(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_roc_curve(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
+    plot_precision_recall(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_feature_importance(mejor_clf, feature_cols, mejor_clf_nombre, 17)
     plot_feature_importance(mejor_reg, feature_cols_reg, mejor_reg_nombre, 18)
     plot_predicciones_vs_real(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
