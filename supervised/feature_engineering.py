@@ -3,11 +3,7 @@
 Agrega indicadores técnicos y crea el target de clasificación binaria.
 
 Uso:
-<<<<<<< HEAD
     python supervised/feature_engineering.py
-=======
-    python src/feature_engineering.py
->>>>>>> origin/desarrollo
 
 Salida:
     data/processed/features.parquet
@@ -19,8 +15,9 @@ from pathlib import Path
 
 import ta
 from ta.trend import SMAIndicator, EMAIndicator, MACD
-from ta.momentum import RSIIndicator
-from ta.volatility import BollingerBands
+from ta.momentum import RSIIndicator, StochasticOscillator, WilliamsRIndicator
+from ta.volatility import BollingerBands, AverageTrueRange
+from ta.volume import OnBalanceVolumeIndicator
 
 ROOT       = Path(__file__).resolve().parent.parent
 DATA_PATH  = ROOT / 'data' / 'crypto_raw.csv'
@@ -64,6 +61,10 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         - RSI 14 días
         - Bollinger Bands 20 días (banda alta, baja y ancho)
         - MACD (línea MACD y señal)
+        - ATR 14 días (volatilidad real)
+        - Stochastic Oscillator %K y %D (momento)
+        - Williams %R 14 días (sobrecompra/sobreventa)
+        - OBV — On-Balance Volume (tendencia de volumen)
 
     Args:
         df: DataFrame con columnas Symbol, Date, Close, High, Low, Volume.
@@ -82,9 +83,10 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
     grupos = []
     for sym, g in df.groupby('Symbol', sort=False):
         g = g.copy().sort_values('Date').reset_index(drop=True)
-        close = g['Close']
-        high  = g['High']
-        low   = g['Low']
+        close  = g['Close']
+        high   = g['High']
+        low    = g['Low']
+        volume = g['Volume']
 
         # SMA
         g['sma_7']  = SMAIndicator(close, window=7,  fillna=False).sma_indicator()
@@ -107,6 +109,20 @@ def add_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
         macd = MACD(close, window_slow=26, window_fast=12, window_sign=9, fillna=False)
         g['macd']        = macd.macd()
         g['macd_signal'] = macd.macd_signal()
+
+        # ATR — mide la volatilidad real del rango diario (útil en cripto por gaps bruscos)
+        g['atr_14'] = AverageTrueRange(high, low, close, window=14, fillna=False).average_true_range()
+
+        # Stochastic Oscillator — detecta agotamiento de tendencia
+        stoch = StochasticOscillator(high, low, close, window=14, smooth_window=3, fillna=False)
+        g['stoch_k'] = stoch.stoch()
+        g['stoch_d'] = stoch.stoch_signal()
+
+        # Williams %R — complementa RSI para sobrecompra/sobreventa
+        g['williams_r'] = WilliamsRIndicator(high, low, close, lbp=14, fillna=False).williams_r()
+
+        # OBV — confirma tendencias de precio con volumen
+        g['obv'] = OnBalanceVolumeIndicator(close, volume, fillna=False).on_balance_volume()
 
         grupos.append(g)
 

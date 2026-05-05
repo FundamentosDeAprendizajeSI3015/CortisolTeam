@@ -15,13 +15,8 @@ Regresores (target: retorno porcentual del día siguiente):
 Mejoras aplicadas:
     - Features de lag (t-1, t-3, t-7) para memoria temporal
     - RandomizedSearchCV para tuning de hiperparámetros
-<<<<<<< HEAD
     - Reporte completo en supervised/reports/supervised_report.md
-    - Gráficas 3D: features vs Return, predicciones 3D
-=======
-    - Reporte completo en reports/supervised_report.md
     - Gráficas 3D: features vs Return, predicciones 3D, PCA+clusters
->>>>>>> origin/desarrollo
     - Gráficas 2D: heatmap, boxplot por símbolo, curvas de aprendizaje,
       tabla de métricas, scatter matrix
 
@@ -29,7 +24,6 @@ Uso:
     python supervised/supervised.py
 
 Salidas:
-<<<<<<< HEAD
     supervised/models/best_classifier.pkl
     supervised/models/best_regressor.pkl
     supervised/reports/supervised_report.md
@@ -43,34 +37,13 @@ Salidas:
     supervised/reports/figures/20_residuos.png
     supervised/reports/figures/21_3d_features_vs_return.png
     supervised/reports/figures/22_3d_predicciones.png
+    supervised/reports/figures/23_3d_pca_clusters.png
     supervised/reports/figures/24_heatmap_correlacion.png
     supervised/reports/figures/25_boxplot_return_por_simbolo.png
     supervised/reports/figures/26_curva_aprendizaje_clf.png
     supervised/reports/figures/27_curva_aprendizaje_reg.png
     supervised/reports/figures/28_tabla_metricas.png
     supervised/reports/figures/29_scatter_matrix.png
-=======
-    models/best_classifier.pkl
-    models/best_regressor.pkl
-    reports/supervised_report.md
-    reports/figures/13_comparacion_clasificadores.png
-    reports/figures/14_comparacion_regresores.png
-    reports/figures/15_confusion_matrix.png
-    reports/figures/16_roc_curve.png
-    reports/figures/17_feature_importance_clf.png
-    reports/figures/18_feature_importance_reg.png
-    reports/figures/19_predicciones_vs_real.png
-    reports/figures/20_residuos.png
-    reports/figures/21_3d_features_vs_return.png
-    reports/figures/22_3d_predicciones.png
-    reports/figures/23_3d_pca_clusters.png
-    reports/figures/24_heatmap_correlacion.png
-    reports/figures/25_boxplot_return_por_simbolo.png
-    reports/figures/26_curva_aprendizaje_clf.png
-    reports/figures/27_curva_aprendizaje_reg.png
-    reports/figures/28_tabla_metricas.png
-    reports/figures/29_scatter_matrix.png
->>>>>>> origin/desarrollo
 """
 
 import warnings
@@ -90,13 +63,11 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.model_selection import TimeSeriesSplit, RandomizedSearchCV, learning_curve
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-<<<<<<< HEAD
-=======
 from sklearn.decomposition import PCA
->>>>>>> origin/desarrollo
 from sklearn.metrics import (
     accuracy_score, f1_score, roc_auc_score,
     confusion_matrix, ConfusionMatrixDisplay, RocCurveDisplay,
+    precision_recall_curve, average_precision_score,
     mean_absolute_error, mean_squared_error, r2_score,
 )
 from xgboost import XGBClassifier, XGBRegressor
@@ -104,17 +75,11 @@ from xgboost import XGBClassifier, XGBRegressor
 # ── Rutas ──────────────────────────────────────────────────────────────────
 ROOT             = Path(__file__).resolve().parent.parent
 DATA_PATH        = ROOT / 'data' / 'processed' / 'features.parquet'
-<<<<<<< HEAD
+CLUSTER_PATH     = ROOT / 'data' / 'cluster_labels.csv'
+FEAT_CLUST_PATH  = ROOT / 'data' / 'features_clustering.csv'
 MODELS_DIR       = ROOT / 'supervised' / 'models'
 FIGURES_DIR      = ROOT / 'supervised' / 'reports' / 'figures'
 REPORTS_DIR      = ROOT / 'supervised' / 'reports'
-=======
-CLUSTER_PATH     = ROOT / 'data' / 'cluster_labels.csv'
-FEAT_CLUST_PATH  = ROOT / 'data' / 'features_clustering.csv'
-MODELS_DIR       = ROOT / 'models'
-FIGURES_DIR      = ROOT / 'reports' / 'figures'
-REPORTS_DIR      = ROOT / 'reports'
->>>>>>> origin/desarrollo
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
 FIGURES_DIR.mkdir(parents=True, exist_ok=True)
 REPORTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -125,9 +90,10 @@ BASE_FEATURE_COLS = [
     'ema_14', 'rsi_14',
     'bb_high', 'bb_low', 'bb_width',
     'macd', 'macd_signal',
+    'atr_14', 'stoch_k', 'stoch_d', 'williams_r', 'obv',
     'Return',
 ]
-LAG_COLS_SOURCE = ['Return', 'rsi_14', 'macd']
+LAG_COLS_SOURCE = ['Return', 'rsi_14', 'macd', 'atr_14']
 LAG_PERIODS     = [1, 3, 7]
 
 TARGET_CLF    = 'target'
@@ -135,7 +101,7 @@ TARGET_REG    = 'Return'
 RETURN_MIN    = -1.0
 RETURN_MAX    =  5.0
 RANDOM_STATE  = 42
-N_ITER_SEARCH = 20
+N_ITER_SEARCH = 40
 
 
 # ── Lag features ───────────────────────────────────────────────────────────
@@ -195,11 +161,7 @@ def cargar_features(path: Path) -> tuple:
     """
     if not path.exists():
         raise FileNotFoundError(
-<<<<<<< HEAD
             f'No se encontró {path}. Ejecuta primero supervised/feature_engineering.py'
-=======
-            f'No se encontró {path}. Ejecuta primero src/feature_engineering.py'
->>>>>>> origin/desarrollo
         )
     df = pd.read_parquet(path)
     df['Date'] = pd.to_datetime(df['Date'])
@@ -208,7 +170,10 @@ def cargar_features(path: Path) -> tuple:
     required = set(BASE_FEATURE_COLS) | {TARGET_CLF, TARGET_REG, 'Date', 'Symbol'}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f'Columnas faltantes en features.parquet: {missing}')
+        raise ValueError(
+            f'Columnas faltantes en features.parquet: {missing}. '
+            f'Regenera el archivo ejecutando: python supervised/feature_engineering.py'
+        )
 
     df = agregar_lag_features(df)
     feature_cols = construir_feature_cols(df)
@@ -265,11 +230,12 @@ def construir_espacios_clf() -> dict:
             Pipeline([
                 ('scaler', StandardScaler()),
                 ('clf', LogisticRegression(
-                    max_iter=1000, random_state=RANDOM_STATE, class_weight='balanced'
+                    max_iter=2000, random_state=RANDOM_STATE, class_weight='balanced'
                 )),
             ]),
-            {'clf__C': [0.01, 0.1, 1.0, 10.0],
-             'clf__solver': ['lbfgs', 'saga']},
+            {'clf__C': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
+             'clf__solver': ['lbfgs', 'saga'],
+             'clf__penalty': ['l2']},
         ),
         'RandomForestClassifier': (
             Pipeline([
@@ -277,9 +243,10 @@ def construir_espacios_clf() -> dict:
                     random_state=RANDOM_STATE, n_jobs=-1, class_weight='balanced'
                 )),
             ]),
-            {'clf__n_estimators': [100, 200, 300],
-             'clf__max_depth': [5, 10, 15, None],
-             'clf__min_samples_leaf': [1, 3, 5]},
+            {'clf__n_estimators': [100, 200, 300, 500],
+             'clf__max_depth': [5, 10, 15, 20, None],
+             'clf__min_samples_leaf': [1, 2, 3, 5],
+             'clf__max_features': ['sqrt', 'log2', 0.5]},
         ),
         'XGBClassifier': (
             Pipeline([
@@ -287,10 +254,13 @@ def construir_espacios_clf() -> dict:
                     random_state=RANDOM_STATE, eval_metric='logloss', verbosity=0
                 )),
             ]),
-            {'clf__n_estimators': [100, 200, 300],
-             'clf__max_depth': [3, 5, 7],
-             'clf__learning_rate': [0.01, 0.05, 0.1],
-             'clf__subsample': [0.7, 0.8, 1.0]},
+            {'clf__n_estimators': [100, 200, 300, 500],
+             'clf__max_depth': [3, 5, 7, 9],
+             'clf__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.2],
+             'clf__subsample': [0.6, 0.7, 0.8, 1.0],
+             'clf__colsample_bytree': [0.6, 0.8, 1.0],
+             'clf__min_child_weight': [1, 3, 5],
+             'clf__gamma': [0, 0.1, 0.3]},
         ),
     }
 
@@ -374,7 +344,7 @@ def construir_espacios_reg() -> dict:
                 ('scaler', StandardScaler()),
                 ('reg', Ridge()),
             ]),
-            {'reg__alpha': [0.01, 0.1, 1.0, 10.0, 100.0]},
+            {'reg__alpha': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]},
         ),
         'RandomForestRegressor': (
             Pipeline([
@@ -382,9 +352,10 @@ def construir_espacios_reg() -> dict:
                     random_state=RANDOM_STATE, n_jobs=-1
                 )),
             ]),
-            {'reg__n_estimators': [100, 200, 300],
-             'reg__max_depth': [5, 10, 15, None],
-             'reg__min_samples_leaf': [1, 3, 5]},
+            {'reg__n_estimators': [100, 200, 300, 500],
+             'reg__max_depth': [5, 10, 15, 20, None],
+             'reg__min_samples_leaf': [1, 2, 3, 5],
+             'reg__max_features': ['sqrt', 'log2', 0.5]},
         ),
         'XGBRegressor': (
             Pipeline([
@@ -392,10 +363,12 @@ def construir_espacios_reg() -> dict:
                     random_state=RANDOM_STATE, verbosity=0
                 )),
             ]),
-            {'reg__n_estimators': [100, 200, 300],
-             'reg__max_depth': [3, 5, 7],
-             'reg__learning_rate': [0.01, 0.05, 0.1],
-             'reg__subsample': [0.7, 0.8, 1.0]},
+            {'reg__n_estimators': [100, 200, 300, 500],
+             'reg__max_depth': [3, 5, 7, 9],
+             'reg__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.2],
+             'reg__subsample': [0.6, 0.7, 0.8, 1.0],
+             'reg__colsample_bytree': [0.6, 0.8, 1.0],
+             'reg__min_child_weight': [1, 3, 5]},
         ),
     }
 
@@ -490,11 +463,11 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         f'\n**Generado:** {fecha}',
         '\n---\n',
         '## 1. Configuración del experimento',
-        f'- **Features base:** {len(BASE_FEATURE_COLS)}',
+        f'- **Features base:** {len(BASE_FEATURE_COLS)} (SMA, EMA, RSI, BB, MACD, ATR, Stochastic, Williams %R, OBV)',
         f'- **Features con lags (t-1, t-3, t-7):** {len(feature_cols)}',
         f'- **Split temporal:** Train {n_train} filas | Val {n_val} filas | Test {n_test} filas',
         f'- **Validación cruzada:** TimeSeriesSplit (5 folds)',
-        f'- **Tuning:** RandomizedSearchCV ({N_ITER_SEARCH} iteraciones)',
+        f'- **Tuning:** RandomizedSearchCV ({N_ITER_SEARCH} iteraciones, espacio ampliado)',
         f'- **Filtro outliers Return:** [{RETURN_MIN}, {RETURN_MAX}]',
         '\n---\n',
         '## 2. Clasificadores — predice si el precio sube o baja',
@@ -550,6 +523,7 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         '- `14_comparacion_regresores.png` — R² val vs test por modelo',
         '- `15_confusion_matrix.png` — Matriz de confusión del mejor clasificador',
         '- `16_roc_curve.png` — Curva ROC del mejor clasificador',
+        '- `30_precision_recall.png` — Curva Precision-Recall con Average Precision y baseline',
         '- `17_feature_importance_clf.png` — Importancia de features (clasificador)',
         '- `18_feature_importance_reg.png` — Importancia de features (regresor)',
         '- `19_predicciones_vs_real.png` — Scatter predicciones vs valores reales',
@@ -563,10 +537,7 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         '### Gráficas 3D',
         '- `21_3d_features_vs_return.png` — Features vs Return en espacio 3D',
         '- `22_3d_predicciones.png` — Real vs Predicho vs Residuo en 3D',
-<<<<<<< HEAD
-=======
         '- `23_3d_pca_clusters.png` — PCA 3D coloreado por cluster KMeans',
->>>>>>> origin/desarrollo
     ]
 
     reporte_path = REPORTS_DIR / 'supervised_report.md'
@@ -644,6 +615,35 @@ def plot_roc_curve(pipeline, X_test, y_test, nombre):
     fig.savefig(FIGURES_DIR / '16_roc_curve.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print('[ok] 16_roc_curve.png')
+
+
+def plot_precision_recall(pipeline, X_test, y_test, nombre):
+    """Curva Precision-Recall del mejor clasificador con baseline de clase positiva."""
+    try:
+        y_proba = pipeline.predict_proba(X_test)[:, 1]
+    except AttributeError:
+        print(f'  [{nombre}] no tiene predict_proba — curva PR omitida.')
+        return
+
+    precision, recall, _ = precision_recall_curve(y_test, y_proba)
+    ap = average_precision_score(y_test, y_proba)
+    baseline = float(y_test.mean())
+
+    fig, ax = plt.subplots(figsize=(6, 5))
+    ax.plot(recall, precision, color='steelblue', linewidth=1.5,
+            label=f'{nombre} (AP = {ap:.2f})')
+    ax.axhline(baseline, color='red', linestyle='--', linewidth=1,
+               label=f'Baseline (positivos = {baseline:.2f})')
+    ax.set_xlabel('Recall')
+    ax.set_ylabel('Precision')
+    ax.set_xlim([0, 1])
+    ax.set_ylim([0, 1.05])
+    ax.set_title(f'Curva Precision-Recall — {nombre}')
+    ax.legend(loc='upper right')
+    plt.tight_layout()
+    fig.savefig(FIGURES_DIR / '30_precision_recall.png', dpi=150, bbox_inches='tight')
+    plt.close(fig)
+    print('[ok] 30_precision_recall.png')
 
 
 def plot_feature_importance(pipeline, feature_cols, nombre, fig_num):
@@ -896,8 +896,6 @@ def plot_3d_predicciones(pipeline, X_test, y_test, nombre):
     print('[ok] 22_3d_predicciones.png')
 
 
-<<<<<<< HEAD
-=======
 def plot_3d_pca_clusters():
     """PCA 3D de features de clustering, coloreado por cluster KMeans_K4."""
     if not CLUSTER_PATH.exists() or not FEAT_CLUST_PATH.exists():
@@ -920,7 +918,6 @@ def plot_3d_pca_clusters():
     var_exp = pca.explained_variance_ratio_
 
     colores_map = {0: 'steelblue', 1: 'tomato', 2: 'mediumseagreen', 3: 'darkorange'}
-    colores = [colores_map.get(l, 'gray') for l in labels]
 
     fig = plt.figure(figsize=(11, 8))
     ax = fig.add_subplot(111, projection='3d')
@@ -942,7 +939,6 @@ def plot_3d_pca_clusters():
     fig.savefig(FIGURES_DIR / '23_3d_pca_clusters.png', dpi=150, bbox_inches='tight')
     plt.close(fig)
     print('[ok] 23_3d_pca_clusters.png')
->>>>>>> origin/desarrollo
 
 
 # ── Main ───────────────────────────────────────────────────────────────────
@@ -969,11 +965,7 @@ def main():
 
     print(f'\n[supervisado] Guardando mejor clasificador ({mejor_clf_nombre}) ...')
     joblib.dump(mejor_clf, MODELS_DIR / 'best_classifier.pkl')
-<<<<<<< HEAD
     print('  → supervised/models/best_classifier.pkl')
-=======
-    print('  → models/best_classifier.pkl')
->>>>>>> origin/desarrollo
 
     # ── Regresores ─────────────────────────────────────────────────────────
     print('\n[supervisado] Tuning y entrenamiento de regresores (target: Return) ...')
@@ -986,11 +978,7 @@ def main():
 
     print(f'\n[supervisado] Guardando mejor regresor ({mejor_reg_nombre}) ...')
     joblib.dump(mejor_reg, MODELS_DIR / 'best_regressor.pkl')
-<<<<<<< HEAD
     print('  → supervised/models/best_regressor.pkl')
-=======
-    print('  → models/best_regressor.pkl')
->>>>>>> origin/desarrollo
 
     # ── Arrays para figuras ────────────────────────────────────────────────
     X_test_clf = test[feature_cols].values
@@ -1009,6 +997,7 @@ def main():
     plot_comparacion_regresores(res_reg)
     plot_confusion_matrix(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_roc_curve(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
+    plot_precision_recall(mejor_clf, X_test_clf, y_test_clf, mejor_clf_nombre)
     plot_feature_importance(mejor_clf, feature_cols, mejor_clf_nombre, 17)
     plot_feature_importance(mejor_reg, feature_cols_reg, mejor_reg_nombre, 18)
     plot_predicciones_vs_real(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
@@ -1024,10 +1013,7 @@ def main():
     print('\n[supervisado] Generando figuras 3D ...')
     plot_3d_features_vs_return(df)
     plot_3d_predicciones(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
-<<<<<<< HEAD
-=======
     plot_3d_pca_clusters()
->>>>>>> origin/desarrollo
 
     # ── Reporte ────────────────────────────────────────────────────────────
     print('\n[supervisado] Generando reporte ...')
