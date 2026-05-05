@@ -7,10 +7,17 @@ Applied to the Crypto ML Project (CortisolTeam).
 Each metric measures how well a kernel matrix separates the two classes
 (price goes up = +1 / price goes down = -1).  Higher values are better
 for alignment, polarization and FSM; lower is better for complex_ratio.
+
+Backward-compatible aliases for the original extremality_mkl naming
+convention are exported at the bottom of this file so that the heart-
+disease baseline scripts (svm_kernels/base/ and svm_kernels/improved/)
+continue to work without modification.
 """
 
 import numpy as np
 
+
+# ── Core metric functions ───────────────────────────────────────────────────
 
 def complex_ratio(K: np.ndarray, y: np.ndarray = None) -> float:
     """Return the trace of the kernel matrix.
@@ -20,7 +27,7 @@ def complex_ratio(K: np.ndarray, y: np.ndarray = None) -> float:
 
     Args:
         K: Square kernel matrix of shape (n, n).
-        y: Ignored — kept for a uniform metric signature.
+        y: Ignored — kept for a uniform metric signature across all functions.
 
     Returns:
         Scalar trace value.
@@ -137,3 +144,13 @@ def fsm(K: np.ndarray, y: np.ndarray) -> float:
     aux_2 = np.sum((c_i - d_i + D - C) ** 2) / (phi_sq * max(n_neg - 1, 1))
 
     return float((np.sqrt(aux_1) + np.sqrt(aux_2)) / np.sqrt(phi_sq))
+
+
+# ── Backward-compatible aliases ─────────────────────────────────────────────
+# The original extremality_mkl repo used slightly different names.
+# These aliases let the heart-disease baseline scripts (svm_kernels/base/
+# and svm_kernels/improved/) import without any modification.
+
+FSM             = fsm               # original used uppercase FSM
+kernel_aligment = kernel_alignment  # original had a typo: 'aligment'
+ideal_kernel    = _ideal_kernel     # original had no leading underscore

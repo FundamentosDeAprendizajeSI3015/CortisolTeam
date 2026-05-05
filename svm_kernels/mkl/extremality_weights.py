@@ -41,12 +41,15 @@ ALL_METRICS: dict[str, tuple] = {
     "complex_ratio": (complex_ratio,        -1),
 }
 
-# Subset used for kernel weighting (alignment + FSM give the best signal
-# for binary crypto classification without the noise of polarization).
-WEIGHT_METRICS: dict[str, tuple] = {
-    "alignment": (kernel_alignment, +1),
-    "fsm":       (fsm,              +1),
-}
+# All four metrics are used for extremality weighting.
+# Using all metrics captures complementary aspects of kernel quality:
+#   - alignment:    global class-geometry match
+#   - polarization: pairwise margin between same/cross class pairs
+#   - fsm:          intra-class cohesion vs inter-class dispersion
+#   - complex_ratio: complexity penalty (direction -1 = lower is better)
+# This was validated in svm_kernels/improved/heart_improved.py, where
+# the 4-metric setup consistently outperformed the 2-metric baseline.
+WEIGHT_METRICS: dict[str, tuple] = ALL_METRICS
 
 
 # ── Metric computation ─────────────────────────────────────────────────────
