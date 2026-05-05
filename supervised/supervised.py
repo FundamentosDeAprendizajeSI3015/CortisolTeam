@@ -100,7 +100,7 @@ TARGET_REG    = 'Return'
 RETURN_MIN    = -1.0
 RETURN_MAX    =  5.0
 RANDOM_STATE  = 42
-N_ITER_SEARCH = 20
+N_ITER_SEARCH = 40
 
 
 # ── Lag features ───────────────────────────────────────────────────────────
@@ -226,11 +226,12 @@ def construir_espacios_clf() -> dict:
             Pipeline([
                 ('scaler', StandardScaler()),
                 ('clf', LogisticRegression(
-                    max_iter=1000, random_state=RANDOM_STATE, class_weight='balanced'
+                    max_iter=2000, random_state=RANDOM_STATE, class_weight='balanced'
                 )),
             ]),
-            {'clf__C': [0.01, 0.1, 1.0, 10.0],
-             'clf__solver': ['lbfgs', 'saga']},
+            {'clf__C': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0],
+             'clf__solver': ['lbfgs', 'saga'],
+             'clf__penalty': ['l2']},
         ),
         'RandomForestClassifier': (
             Pipeline([
@@ -238,9 +239,10 @@ def construir_espacios_clf() -> dict:
                     random_state=RANDOM_STATE, n_jobs=-1, class_weight='balanced'
                 )),
             ]),
-            {'clf__n_estimators': [100, 200, 300],
-             'clf__max_depth': [5, 10, 15, None],
-             'clf__min_samples_leaf': [1, 3, 5]},
+            {'clf__n_estimators': [100, 200, 300, 500],
+             'clf__max_depth': [5, 10, 15, 20, None],
+             'clf__min_samples_leaf': [1, 2, 3, 5],
+             'clf__max_features': ['sqrt', 'log2', 0.5]},
         ),
         'XGBClassifier': (
             Pipeline([
@@ -248,10 +250,13 @@ def construir_espacios_clf() -> dict:
                     random_state=RANDOM_STATE, eval_metric='logloss', verbosity=0
                 )),
             ]),
-            {'clf__n_estimators': [100, 200, 300],
-             'clf__max_depth': [3, 5, 7],
-             'clf__learning_rate': [0.01, 0.05, 0.1],
-             'clf__subsample': [0.7, 0.8, 1.0]},
+            {'clf__n_estimators': [100, 200, 300, 500],
+             'clf__max_depth': [3, 5, 7, 9],
+             'clf__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.2],
+             'clf__subsample': [0.6, 0.7, 0.8, 1.0],
+             'clf__colsample_bytree': [0.6, 0.8, 1.0],
+             'clf__min_child_weight': [1, 3, 5],
+             'clf__gamma': [0, 0.1, 0.3]},
         ),
     }
 
@@ -335,7 +340,7 @@ def construir_espacios_reg() -> dict:
                 ('scaler', StandardScaler()),
                 ('reg', Ridge()),
             ]),
-            {'reg__alpha': [0.01, 0.1, 1.0, 10.0, 100.0]},
+            {'reg__alpha': [0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0]},
         ),
         'RandomForestRegressor': (
             Pipeline([
@@ -343,9 +348,10 @@ def construir_espacios_reg() -> dict:
                     random_state=RANDOM_STATE, n_jobs=-1
                 )),
             ]),
-            {'reg__n_estimators': [100, 200, 300],
-             'reg__max_depth': [5, 10, 15, None],
-             'reg__min_samples_leaf': [1, 3, 5]},
+            {'reg__n_estimators': [100, 200, 300, 500],
+             'reg__max_depth': [5, 10, 15, 20, None],
+             'reg__min_samples_leaf': [1, 2, 3, 5],
+             'reg__max_features': ['sqrt', 'log2', 0.5]},
         ),
         'XGBRegressor': (
             Pipeline([
@@ -353,10 +359,12 @@ def construir_espacios_reg() -> dict:
                     random_state=RANDOM_STATE, verbosity=0
                 )),
             ]),
-            {'reg__n_estimators': [100, 200, 300],
-             'reg__max_depth': [3, 5, 7],
-             'reg__learning_rate': [0.01, 0.05, 0.1],
-             'reg__subsample': [0.7, 0.8, 1.0]},
+            {'reg__n_estimators': [100, 200, 300, 500],
+             'reg__max_depth': [3, 5, 7, 9],
+             'reg__learning_rate': [0.005, 0.01, 0.05, 0.1, 0.2],
+             'reg__subsample': [0.6, 0.7, 0.8, 1.0],
+             'reg__colsample_bytree': [0.6, 0.8, 1.0],
+             'reg__min_child_weight': [1, 3, 5]},
         ),
     }
 
@@ -451,11 +459,11 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         f'\n**Generado:** {fecha}',
         '\n---\n',
         '## 1. Configuración del experimento',
-        f'- **Features base:** {len(BASE_FEATURE_COLS)}',
+        f'- **Features base:** {len(BASE_FEATURE_COLS)} (SMA, EMA, RSI, BB, MACD, ATR, Stochastic, Williams %R, OBV)',
         f'- **Features con lags (t-1, t-3, t-7):** {len(feature_cols)}',
         f'- **Split temporal:** Train {n_train} filas | Val {n_val} filas | Test {n_test} filas',
         f'- **Validación cruzada:** TimeSeriesSplit (5 folds)',
-        f'- **Tuning:** RandomizedSearchCV ({N_ITER_SEARCH} iteraciones)',
+        f'- **Tuning:** RandomizedSearchCV ({N_ITER_SEARCH} iteraciones, espacio ampliado)',
         f'- **Filtro outliers Return:** [{RETURN_MIN}, {RETURN_MAX}]',
         '\n---\n',
         '## 2. Clasificadores — predice si el precio sube o baja',
