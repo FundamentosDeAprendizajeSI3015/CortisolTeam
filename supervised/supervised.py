@@ -170,7 +170,10 @@ def cargar_features(path: Path) -> tuple:
     required = set(BASE_FEATURE_COLS) | {TARGET_CLF, TARGET_REG, 'Date', 'Symbol'}
     missing = required - set(df.columns)
     if missing:
-        raise ValueError(f'Columnas faltantes en features.parquet: {missing}')
+        raise ValueError(
+            f'Columnas faltantes en features.parquet: {missing}. '
+            f'Regenera el archivo ejecutando: python supervised/feature_engineering.py'
+        )
 
     df = agregar_lag_features(df)
     feature_cols = construir_feature_cols(df)
