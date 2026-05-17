@@ -13,3 +13,8 @@ venv/
 
 # Kaggle credentials (nunca subir)
 kaggle.json
+
+# Datos procesados (no subir)
+data/crypto_raw.csv
+data/crypto_raw_real.csv
+data/processed/features.parquet
