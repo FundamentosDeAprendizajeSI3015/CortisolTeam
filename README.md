@@ -1,79 +1,68 @@
-# Crypto ML Project
+# Crypto ML Project — CortisolTeam
 
-Proyecto de Machine Learning sobre criptomonedas. Abarca desde la ingesta de datos hasta modelos supervisados, clustering y visualizacion interactiva.
+Pipeline completo de Machine Learning aplicado a criptomonedas: desde ingesta y generación sintética hasta clustering, modelos supervisados, SVM-MKL y backtesting.
 
-**Dataset:** Cryptocurrency Historical Prices (Kaggle) — 23 monedas, 2013-2021.
+**Dataset:** 23 monedas reales (Kaggle, 2013–2021) + 220 monedas sintéticas (GBM + Jump-Diffusion) = **~988K filas totales**.
 
 ---
 
 ## Fases del proyecto
 
-| # | Rama | Carpeta | Estado |
-|---|------|---------|--------|
-| 01 | `feature/load-data` | `load_data/` | Completado |
-| 02 | `feature/eda` | `eda/` | Completado |
-| 03 | `feature/unsupervised` | `unsupervised/` | Completado |
-| 04 | `feature/supervised` | `supervised/` | Completado |
-| 05 | `feature/visualization` | `visualization/` | Completado |
-| 06 | `feature/scoring` | `scoring/` | Completado |
+| # | Carpeta | Descripción | Estado |
+|---|---------|-------------|--------|
+| 01 | `load_data/` | Ingesta de datos reales (Kaggle) | ✅ |
+| 01b | `load_data/` | Generación sintética con IA (SYN001–SYN220) | ✅ |
+| 02 | `eda/` | Análisis exploratorio (Matplotlib + Seaborn) | ✅ |
+| 03 | `unsupervised/` | Clustering (K-Means, DBSCAN, Agglomerative, One-Class SVM) | ✅ |
+| 04 | `supervised/` | Feature engineering + clasificación + regresión | ✅ |
+| 05 | `svm_kernels/` | SVM con Multiple Kernel Learning (MKL) | ✅ |
+| 06 | `scoring/` | Evaluación final y backtesting | ✅ |
+| 07 | `visualization/` | Dashboard HTML interactivo | ✅ |
 
 ---
 
-## Estructura del repositorio
+## Setup
+
+```bash
+pip install -r requirements.txt
+# SVM-MKL tiene dependencias adicionales:
+pip install -r svm_kernels/requirements.txt
+```
+
+## Ejecución
+
+```bash
+python load_data/load_data.py
+python load_data/synthetic_data.py
+python eda/eda.py
+python unsupervised/eda_clustering.py && python unsupervised/clustering.py && python unsupervised/svm_analysis.py
+python supervised/feature_engineering.py && python supervised/supervised.py
+python -m svm_kernels.svm_mkl          # ejecutar como módulo, no como script directo
+python scoring/src/scoring.py
+python visualization/app/main.py
+```
+
+---
+
+## Estructura
 
 ```
-├── data/                       # datasets generados por cada fase
-├── load_data/                  # ingesta y validacion del dataset
-├── eda/                        # analisis exploratorio
-├── unsupervised/               # clustering (K-Means, DBSCAN, Agglomerative)
-├── supervised/                 # clasificacion y regresion
-├── visualization/              # dashboard interactivo (EDA + modelos)
-├── scoring/                    # evaluacion final y backtesting
+├── data/                  # datasets intermedios y finales
+├── load_data/             # ingesta y generación sintética
+├── eda/                   # análisis exploratorio
+├── unsupervised/          # clustering y anomaly detection
+├── supervised/            # modelos supervisados y feature engineering
+├── svm_kernels/           # SVM-MKL sobre datos cripto
+├── scoring/               # métricas finales y backtesting
+├── visualization/         # dashboard interactivo
 └── requirements.txt
 ```
 
 ---
 
-## Setup general
+## Resultados clave
 
-```bash
-pip install -r requirements.txt
-```
-
-Cada fase tiene su propia carpeta con un script principal y un README con instrucciones especificas.
-
----
-
-## Dashboard interactivo
-
-El dashboard integra EDA, modelo no supervisado, modelo supervisado y scoring en una sola vista.
-
-Ejecuta:
-
-```bash
-python visualization/app/main.py
-```
-
-Salida principal:
-
-- visualization/app/dashboard.html
-- visualization/outputs/ (graficas EDA y clustering)
-- supervised/reports/figures/ (graficas supervisadas)
-- scoring/reports/figures/ (graficas de scoring)
-
----
-
-## Flujo de ramas
-
-```
-main
-└── desarrollo          <- rama de integracion
-    ├── feature/load-data
-    ├── feature/eda
-    ├── feature/unsupervised
-    ├── feature/supervised
-    ├── feature/visualization
-    └── feature/scoring
-```
-
-Las ramas `feature/*` hacen merge a `desarrollo` una vez completadas.
+- **Clustering:** K-Means K=2 silhouette=0.91 · XEM outlier en 4/4 métodos
+- **Clasificación:** Random Forest · Test AUC=0.591 · Test F1=0.65
+- **Regresión:** XGBoost · Test R²=0.916 (cota superior, datos sintéticos)
+- **SVM-MKL:** Anti-Natural MKL · AUC=0.528 · todos los MKL > kernel único
