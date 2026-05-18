@@ -101,7 +101,10 @@ TARGET_REG    = 'Return'
 RETURN_MIN    = -1.0
 RETURN_MAX    =  5.0
 RANDOM_STATE  = 42
-N_ITER_SEARCH = 40
+N_ITER_SEARCH = 10
+# Cap de entrenamiento: evita tiempos inviables con 1M filas.
+# El dataset completo sigue siendo 1M — solo se limita el subconjunto de fit.
+MAX_TRAIN_SAMPLES = 100_000
 
 
 # ── Lag features ───────────────────────────────────────────────────────────
@@ -277,14 +280,19 @@ def entrenar_clasificadores(train, val, test, feature_cols):
     Returns:
         Tupla (resultados_df, mejor_pipeline, mejor_nombre).
     """
-    X_train = train[feature_cols].values
-    y_train = train[TARGET_CLF].values
+    train_fit = train
+    if len(train) > MAX_TRAIN_SAMPLES:
+        train_fit = train.sample(n=MAX_TRAIN_SAMPLES, random_state=RANDOM_STATE).sort_values('Date')
+        print(f'  [sample] Train reducido a {MAX_TRAIN_SAMPLES:,} filas para fitting')
+
+    X_train = train_fit[feature_cols].values
+    y_train = train_fit[TARGET_CLF].values
     X_val   = val[feature_cols].values
     y_val   = val[TARGET_CLF].values
     X_test  = test[feature_cols].values
     y_test  = test[TARGET_CLF].values
 
-    tscv = TimeSeriesSplit(n_splits=5)
+    tscv = TimeSeriesSplit(n_splits=3)
     espacios = construir_espacios_clf()
     resultados = []
     pipelines_ajustados = {}
@@ -393,14 +401,19 @@ def entrenar_regresores(train, val, test, feature_cols):
         if c != TARGET_REG and not c.startswith('Return_lag')
     ]
 
-    X_train = train[feature_cols_reg].values
-    y_train = train[TARGET_REG].values
+    train_fit = train
+    if len(train) > MAX_TRAIN_SAMPLES:
+        train_fit = train.sample(n=MAX_TRAIN_SAMPLES, random_state=RANDOM_STATE).sort_values('Date')
+        print(f'  [sample] Train reducido a {MAX_TRAIN_SAMPLES:,} filas para fitting')
+
+    X_train = train_fit[feature_cols_reg].values
+    y_train = train_fit[TARGET_REG].values
     X_val   = val[feature_cols_reg].values
     y_val   = val[TARGET_REG].values
     X_test  = test[feature_cols_reg].values
     y_test  = test[TARGET_REG].values
 
-    tscv = TimeSeriesSplit(n_splits=5)
+    tscv = TimeSeriesSplit(n_splits=3)
     espacios = construir_espacios_reg()
     resultados = []
     pipelines_ajustados = {}
@@ -410,7 +423,7 @@ def entrenar_regresores(train, val, test, feature_cols):
         search = RandomizedSearchCV(
             pipeline_base, param_dist,
             n_iter=N_ITER_SEARCH, cv=tscv,
-            scoring='r2', n_jobs=-1,
+            scoring='neg_mean_absolute_error', n_jobs=-1,
             random_state=RANDOM_STATE, refit=True,
         )
         search.fit(X_train, y_train)
@@ -423,7 +436,7 @@ def entrenar_regresores(train, val, test, feature_cols):
 
         resultados.append({
             'Modelo'         : nombre,
-            'CV_R2_mean'     : round(float(search.best_score_), 4),
+            'CV_MAE_mean'    : round(float(-search.best_score_), 6),
             'Val_MAE'        : round(float(mean_absolute_error(y_val, y_val_pred)), 6),
             'Val_RMSE'       : round(float(np.sqrt(mean_squared_error(y_val, y_val_pred))), 6),
             'Val_R2'         : round(float(r2_score(y_val, y_val_pred)), 4),
@@ -495,13 +508,13 @@ def generar_reporte(res_clf, res_reg, mejor_clf_nombre, mejor_reg_nombre,
         '\n---\n',
         '## 3. Regresores — predice el retorno porcentual del día siguiente',
         '\n### Métricas comparativas\n',
-        '| Modelo | CV_R2 | Val_MAE | Val_RMSE | Val_R2 | Test_MAE | Test_RMSE | Test_R2 |',
+        '| Modelo | CV_MAE | Val_MAE | Val_RMSE | Val_R2 | Test_MAE | Test_RMSE | Test_R2 |',
         '|--------|-------|---------|----------|--------|----------|-----------|---------|',
     ]
 
     for nombre, row in res_reg.iterrows():
         lineas.append(
-            f'| {nombre} | {row["CV_R2_mean"]} | {row["Val_MAE"]} | '
+            f'| {nombre} | {row["CV_MAE_mean"]} | {row["Val_MAE"]} | '
             f'{row["Val_RMSE"]} | {row["Val_R2"]} | {row["Test_MAE"]} | '
             f'{row["Test_RMSE"]} | {row["Test_R2"]} |'
         )
@@ -742,7 +755,7 @@ def plot_boxplot_return_por_simbolo(df):
 
 def plot_curva_aprendizaje(pipeline, X_train, y_train, nombre, fig_num, scoring):
     """Curva de aprendizaje del pipeline dado."""
-    tscv = TimeSeriesSplit(n_splits=5)
+    tscv = TimeSeriesSplit(n_splits=3)
     train_sizes = np.linspace(0.1, 1.0, 8)
     sizes, train_scores, val_scores = learning_curve(
         pipeline, X_train, y_train,
@@ -789,7 +802,7 @@ def plot_tabla_metricas(res_clf, res_reg):
     axes[0].set_title('Clasificadores', fontweight='bold', pad=10)
 
     # Regresores
-    cols_reg = ['CV_R2_mean', 'Val_MAE', 'Val_RMSE', 'Val_R2', 'Test_MAE', 'Test_RMSE', 'Test_R2']
+    cols_reg = ['CV_MAE_mean', 'Val_MAE', 'Val_RMSE', 'Val_R2', 'Test_MAE', 'Test_RMSE', 'Test_R2']
     data_reg = res_reg[cols_reg].reset_index().values
     headers_reg = ['Modelo'] + cols_reg
     tabla_reg = axes[1].table(
@@ -973,7 +986,7 @@ def main():
         train, val, test, feature_cols
     )
     print('\n  Tabla comparativa — regresores:')
-    print(res_reg[['CV_R2_mean', 'Val_MAE', 'Val_RMSE', 'Val_R2',
+    print(res_reg[['CV_MAE_mean', 'Val_MAE', 'Val_RMSE', 'Val_R2',
                    'Test_MAE', 'Test_RMSE', 'Test_R2']].to_string())
 
     print(f'\n[supervisado] Guardando mejor regresor ({mejor_reg_nombre}) ...')
@@ -1003,17 +1016,9 @@ def main():
     plot_predicciones_vs_real(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
     plot_residuos(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
     plot_heatmap_correlacion(df, feature_cols)
-    plot_boxplot_return_por_simbolo(df)
     plot_curva_aprendizaje(mejor_clf, X_train_clf, y_train_clf, mejor_clf_nombre, 26, 'roc_auc')
     plot_curva_aprendizaje(mejor_reg, X_train_reg, y_train_reg, mejor_reg_nombre, 27, 'r2')
     plot_tabla_metricas(res_clf, res_reg)
-    plot_scatter_matrix(df, feature_cols)
-
-    # ── Figuras 3D ─────────────────────────────────────────────────────────
-    print('\n[supervisado] Generando figuras 3D ...')
-    plot_3d_features_vs_return(df)
-    plot_3d_predicciones(mejor_reg, X_test_reg, y_test_reg, mejor_reg_nombre)
-    plot_3d_pca_clusters()
 
     # ── Reporte ────────────────────────────────────────────────────────────
     print('\n[supervisado] Generando reporte ...')

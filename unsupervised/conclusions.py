@@ -85,7 +85,9 @@ def generate_report(labels: pd.DataFrame, features: pd.DataFrame) -> str:
     lines.append("=" * 65)
     lines.append("CONCLUSIONES UNSUPERVISED — Crypto ML Project")
     lines.append("=" * 65)
-    lines.append(f"\nDataset : {len(symbols)} monedas | 2013-2021")
+    n_real  = sum(1 for s in symbols if not s.startswith("SYN"))
+    n_synth = len(symbols) - n_real
+    lines.append(f"\nDataset : {len(symbols)} monedas ({n_real} reales + {n_synth} sintéticas) | 2013-2024")
     lines.append(f"Features: mean_return, volatility, sharpe_ratio, max_drawdown, avg_volume")
     lines.append(f"Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM\n")
 
@@ -130,32 +132,25 @@ def generate_report(labels: pd.DataFrame, features: pd.DataFrame) -> str:
     lines.append("3. SEGMENTACION DEL MERCADO (DBSCAN)")
     lines.append("-" * 65)
     groups = dbscan_groups(labels)
-    group_names = {
-        -1: "Anomalias / comportamiento unico",
-         0: "Grupo DeFi y nuevos protocolos",
-         1: "Altcoins establecidos",
-    }
+    group_labels = {-1: "Anomalias / comportamiento unico"}
     for cluster, coins in groups.items():
-        name = group_names.get(cluster, f"Cluster {cluster}")
-        lines.append(f"\n  {name} ({len(coins)}):")
-        lines.append(f"    {', '.join(coins)}")
+        name = group_labels.get(cluster, f"Cluster {cluster}")
+        real_coins  = [c for c in coins if not c.startswith("SYN")]
+        synth_count = len(coins) - len(real_coins)
+        lines.append(f"\n  {name} ({len(coins)} total — {len(real_coins)} reales, {synth_count} sintéticas):")
+        lines.append(f"    Reales: {', '.join(real_coins) if real_coins else '(ninguna)'}")
 
     # ---- 4. Perfil de clusters KMeans K=4 ----
     lines.append(f"\n{'-' * 65}")
     lines.append("4. PERFIL DE GRUPOS — K-MEANS K=4")
     lines.append("-" * 65)
-    km4_names = {
-        0: "XEM — outlier extremo",
-        1: "Mercado general (20 monedas)",
-        2: "USDT — stablecoin dominante en volumen",
-        3: "USDC — stablecoin de menor volumen",
-    }
     for cluster in sorted(labels["KMeans_K4"].unique()):
         coins = labels[labels["KMeans_K4"] == cluster].index.tolist()
-        name  = km4_names.get(cluster, f"Cluster {cluster}")
+        real_coins  = [c for c in coins if not c.startswith("SYN")]
+        synth_count = len(coins) - len(real_coins)
         group_features = features.loc[coins].mean()
-        lines.append(f"\n  Cluster {cluster} — {name}:")
-        lines.append(f"    Monedas    : {', '.join(coins)}")
+        lines.append(f"\n  Cluster {cluster} ({len(coins)} total — {len(real_coins)} reales, {synth_count} sintéticas):")
+        lines.append(f"    Reales     : {', '.join(real_coins) if real_coins else '(ninguna)'}")
         lines.append(f"    Volatilidad: {group_features['volatility']:.6f} (media del grupo)")
         lines.append(f"    Retorno    : {group_features['mean_return']:.6f}")
         lines.append(f"    Sharpe     : {group_features['sharpe_ratio']:.4f}")
@@ -166,9 +161,9 @@ def generate_report(labels: pd.DataFrame, features: pd.DataFrame) -> str:
     lines.append("5. LLAMADO A LA ACCION — FASE SUPERVISADA")
     lines.append("-" * 65)
 
-    robust_anomalies = cross[cross["n_algorithms"] >= 3].index.tolist()
-    defi_group       = groups.get(0, [])
-    altcoin_group    = groups.get(1, [])
+    robust_anomalies = [s for s in cross[cross["n_algorithms"] >= 3].index.tolist() if not s.startswith("SYN")]
+    defi_group       = [c for c in groups.get(0, []) if not c.startswith("SYN")]
+    altcoin_group    = [c for c in groups.get(1, []) if not c.startswith("SYN")]
 
     lines.append(f"""
   A. EXCLUSIONES RECOMENDADAS

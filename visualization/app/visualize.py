@@ -135,7 +135,7 @@ def preparar_retornos(df_crypto: pd.DataFrame) -> pd.DataFrame:
         DataFrame ordenado con Return, mes y dia_semana.
     """
     df_temp = df_crypto.copy()
-    df_temp['Date'] = pd.to_datetime(df_temp['Date'])
+    df_temp['Date'] = pd.to_datetime(df_temp['Date'], format='mixed')
     df_temp = df_temp.sort_values(['Symbol', 'Date']).reset_index(drop=True)
     df_temp['Return'] = df_temp.groupby('Symbol')['Close'].pct_change()
     df_temp['mes'] = df_temp['Date'].dt.month
@@ -196,7 +196,7 @@ def plot_price_timeseries(df_crypto: pd.DataFrame) -> None:
         return
     
     # Convertir Date a datetime
-    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'])
+    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'], format='mixed')
     
     # Filtrar monedas principales
     df_top = df_crypto[df_crypto['Symbol'].isin(MONEDAS_PRINCIPALES)].copy()
@@ -236,7 +236,7 @@ def plot_price_normalized(df_crypto: pd.DataFrame) -> None:
         return
     
     # Convertir Date a datetime
-    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'])
+    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'], format='mixed')
     
     # Filtrar monedas principales
     df_top = df_crypto[df_crypto['Symbol'].isin(MONEDAS_PRINCIPALES)].copy()
@@ -322,7 +322,7 @@ def plot_correlation_heatmap(df_crypto: pd.DataFrame) -> None:
     
     # Preparar datos
     df_temp = df_crypto.copy()
-    df_temp['Date'] = pd.to_datetime(df_temp['Date'])
+    df_temp['Date'] = pd.to_datetime(df_temp['Date'], format='mixed')
     df_temp['Return'] = df_temp.groupby('Symbol')['Close'].pct_change()
     
     # Crear matriz pivote
@@ -362,7 +362,7 @@ def plot_volume_analysis(df_crypto: pd.DataFrame) -> None:
         return
     
     # Convertir Date a datetime
-    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'])
+    df_crypto['Date'] = pd.to_datetime(df_crypto['Date'], format='mixed')
     
     # Filtrar monedas principales
     df_top = df_crypto[df_crypto['Symbol'].isin(MONEDAS_PRINCIPALES)].copy()

@@ -2,7 +2,7 @@
 CONCLUSIONES UNSUPERVISED — Crypto ML Project
 =================================================================
 
-Dataset : 23 monedas | 2013-2021
+Dataset : 243 monedas (23 reales + 220 sintéticas) | 2013-2024
 Features: mean_return, volatility, sharpe_ratio, max_drawdown, avg_volume
 Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM
 
@@ -11,23 +11,243 @@ Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM
 -----------------------------------------------------------------
   Moneda | DBSCAN |   SVM | KMeans | Agglom | Total
 ---------------------------------------------------
-    AAVE | normal |   ok  | normal | normal | 0/4
-     ADA | normal |   ok  | normal | normal | 0/4
+    AAVE | normal |  ANOM | normal | normal | 1/4
+     ADA | normal |  ANOM | normal | normal | 1/4
     ATOM | normal |   ok  | normal | normal | 0/4
-     BNB | normal |   ok  | normal | normal | 0/4
-     BTC |   ANOM |   ok  | normal | normal | 1/4
+     BNB | normal |  ANOM | normal | normal | 1/4
+     BTC |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
      CRO | normal |   ok  | normal | normal | 0/4
-    DOGE |   ANOM |   ok  | normal | normal | 1/4
-     DOT | normal |   ok  | normal | normal | 0/4
-     EOS | normal |   ok  | normal | normal | 0/4
-     ETH |   ANOM |   ok  | normal | normal | 1/4
-    LINK | normal |   ok  | normal | normal | 0/4
+    DOGE |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+     DOT |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+     EOS | normal |  ANOM | normal | normal | 1/4
+     ETH |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+    LINK | normal |  ANOM | normal | normal | 1/4
      LTC | normal |   ok  | normal | normal | 0/4
    MIOTA | normal |   ok  | normal | normal | 0/4
      SOL | normal |  ANOM | normal | normal | 1/4
-     TRX | normal |   ok  | normal | normal | 0/4
-     UNI | normal |   ok  | normal | normal | 0/4
-    USDC |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+  SYN001 | normal |   ok  | normal | normal | 0/4
+  SYN002 | normal |  ANOM | normal | normal | 1/4
+  SYN003 | normal |   ok  | normal | normal | 0/4
+  SYN004 | normal |   ok  | normal | normal | 0/4
+  SYN005 | normal |   ok  | normal | normal | 0/4
+  SYN006 | normal |   ok  | normal | normal | 0/4
+  SYN007 | normal |   ok  | normal | normal | 0/4
+  SYN008 | normal |   ok  | normal | normal | 0/4
+  SYN009 | normal |  ANOM | normal | normal | 1/4
+  SYN010 | normal |   ok  | normal | normal | 0/4
+  SYN011 | normal |   ok  | normal | normal | 0/4
+  SYN012 | normal |   ok  | normal | normal | 0/4
+  SYN013 | normal |   ok  | normal | normal | 0/4
+  SYN014 | normal |   ok  | normal | normal | 0/4
+  SYN015 | normal |   ok  | normal | normal | 0/4
+  SYN016 | normal |  ANOM | normal | normal | 1/4
+  SYN017 | normal |   ok  | normal | normal | 0/4
+  SYN018 | normal |   ok  | normal | normal | 0/4
+  SYN019 | normal |   ok  | normal | normal | 0/4
+  SYN020 | normal |   ok  | normal | normal | 0/4
+  SYN021 | normal |  ANOM | normal | normal | 1/4
+  SYN022 | normal |   ok  | normal | normal | 0/4
+  SYN023 | normal |   ok  | normal | normal | 0/4
+  SYN024 | normal |   ok  | normal | normal | 0/4
+  SYN025 | normal |   ok  | normal | normal | 0/4
+  SYN026 |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+  SYN027 | normal |   ok  | normal | normal | 0/4
+  SYN028 | normal |   ok  | normal | normal | 0/4
+  SYN029 | normal |   ok  | normal | normal | 0/4
+  SYN030 | normal |   ok  | normal | normal | 0/4
+  SYN031 | normal |   ok  | normal | normal | 0/4
+  SYN032 | normal |   ok  | normal | normal | 0/4
+  SYN033 | normal |   ok  | normal | normal | 0/4
+  SYN034 | normal |   ok  | normal | normal | 0/4
+  SYN035 | normal |   ok  | normal | normal | 0/4
+  SYN036 | normal |   ok  | normal | normal | 0/4
+  SYN037 | normal |   ok  | normal | normal | 0/4
+  SYN038 | normal |   ok  | normal | normal | 0/4
+  SYN039 | normal |   ok  | normal | normal | 0/4
+  SYN040 | normal |   ok  | normal | normal | 0/4
+  SYN041 | normal |   ok  | normal | normal | 0/4
+  SYN042 | normal |   ok  | normal | normal | 0/4
+  SYN043 | normal |   ok  | normal | normal | 0/4
+  SYN044 | normal |   ok  | normal | normal | 0/4
+  SYN045 | normal |   ok  | normal | normal | 0/4
+  SYN046 | normal |   ok  | normal | normal | 0/4
+  SYN047 | normal |   ok  | normal | normal | 0/4
+  SYN048 | normal |   ok  | normal | normal | 0/4
+  SYN049 | normal |   ok  | normal | normal | 0/4
+  SYN050 | normal |   ok  | normal | normal | 0/4
+  SYN051 | normal |   ok  | normal | normal | 0/4
+  SYN052 | normal |  ANOM | normal | normal | 1/4
+  SYN053 | normal |   ok  | normal | normal | 0/4
+  SYN054 | normal |   ok  | normal | normal | 0/4
+  SYN055 | normal |   ok  | normal | normal | 0/4
+  SYN056 | normal |   ok  | normal | normal | 0/4
+  SYN057 | normal |   ok  | normal | normal | 0/4
+  SYN058 | normal |   ok  | normal | normal | 0/4
+  SYN059 | normal |   ok  | normal | normal | 0/4
+  SYN060 | normal |   ok  | normal | normal | 0/4
+  SYN061 | normal |   ok  | normal | normal | 0/4
+  SYN062 | normal |  ANOM | normal | normal | 1/4
+  SYN063 | normal |   ok  | normal | normal | 0/4
+  SYN064 | normal |   ok  | normal | normal | 0/4
+  SYN065 | normal |   ok  | normal | normal | 0/4
+  SYN066 | normal |   ok  | normal | normal | 0/4
+  SYN067 | normal |   ok  | normal | normal | 0/4
+  SYN068 | normal |   ok  | normal | normal | 0/4
+  SYN069 | normal |   ok  | normal | normal | 0/4
+  SYN070 | normal |   ok  | normal | normal | 0/4
+  SYN071 | normal |  ANOM | normal | normal | 1/4
+  SYN072 | normal |   ok  | normal | normal | 0/4
+  SYN073 | normal |   ok  | normal | normal | 0/4
+  SYN074 | normal |   ok  | normal | normal | 0/4
+  SYN075 | normal |   ok  | normal | normal | 0/4
+  SYN076 | normal |   ok  | normal | normal | 0/4
+  SYN077 | normal |   ok  | normal | normal | 0/4
+  SYN078 | normal |  ANOM | normal | normal | 1/4
+  SYN079 | normal |   ok  | normal | normal | 0/4
+  SYN080 | normal |   ok  | normal | normal | 0/4
+  SYN081 | normal |   ok  | normal | normal | 0/4
+  SYN082 | normal |   ok  | normal | normal | 0/4
+  SYN083 | normal |   ok  | normal | normal | 0/4
+  SYN084 | normal |   ok  | normal | normal | 0/4
+  SYN085 | normal |  ANOM | normal | normal | 1/4
+  SYN086 | normal |  ANOM | normal | normal | 1/4
+  SYN087 | normal |  ANOM | normal | normal | 1/4
+  SYN088 | normal |   ok  | normal | normal | 0/4
+  SYN089 | normal |   ok  | normal | normal | 0/4
+  SYN090 | normal |   ok  | normal | normal | 0/4
+  SYN091 | normal |   ok  | normal | normal | 0/4
+  SYN092 | normal |   ok  | normal | normal | 0/4
+  SYN093 | normal |  ANOM | normal | normal | 1/4
+  SYN094 | normal |  ANOM | normal | normal | 1/4
+  SYN095 | normal |   ok  | normal | normal | 0/4
+  SYN096 | normal |   ok  | normal | normal | 0/4
+  SYN097 | normal |   ok  | normal | normal | 0/4
+  SYN098 | normal |   ok  | normal | normal | 0/4
+  SYN099 | normal |   ok  | normal | normal | 0/4
+  SYN100 | normal |   ok  | normal | normal | 0/4
+  SYN101 | normal |   ok  | normal | normal | 0/4
+  SYN102 | normal |   ok  | normal | normal | 0/4
+  SYN103 | normal |   ok  | normal | normal | 0/4
+  SYN104 | normal |  ANOM | normal | normal | 1/4
+  SYN105 | normal |   ok  | normal | normal | 0/4
+  SYN106 | normal |  ANOM | normal | normal | 1/4
+  SYN107 | normal |   ok  | normal | normal | 0/4
+  SYN108 | normal |   ok  | normal | normal | 0/4
+  SYN109 | normal |   ok  | normal | normal | 0/4
+  SYN110 | normal |   ok  | normal | normal | 0/4
+  SYN111 | normal |   ok  | normal | normal | 0/4
+  SYN112 | normal |  ANOM | normal | normal | 1/4
+  SYN113 | normal |   ok  | normal | normal | 0/4
+  SYN114 | normal |   ok  | normal | normal | 0/4
+  SYN115 | normal |   ok  | normal | normal | 0/4
+  SYN116 | normal |   ok  | normal | normal | 0/4
+  SYN117 | normal |  ANOM | normal | normal | 1/4
+  SYN118 | normal |   ok  | normal | normal | 0/4
+  SYN119 | normal |   ok  | normal | normal | 0/4
+  SYN120 | normal |   ok  | normal | normal | 0/4
+  SYN121 | normal |   ok  | normal | normal | 0/4
+  SYN122 | normal |   ok  | normal | normal | 0/4
+  SYN123 | normal |   ok  | normal | normal | 0/4
+  SYN124 | normal |   ok  | normal | normal | 0/4
+  SYN125 | normal |   ok  | normal | normal | 0/4
+  SYN126 | normal |   ok  | normal | normal | 0/4
+  SYN127 | normal |   ok  | normal | normal | 0/4
+  SYN128 | normal |  ANOM | normal | normal | 1/4
+  SYN129 | normal |  ANOM | normal | normal | 1/4
+  SYN130 | normal |   ok  | normal | normal | 0/4
+  SYN131 | normal |   ok  | normal | normal | 0/4
+  SYN132 | normal |   ok  | normal | normal | 0/4
+  SYN133 | normal |   ok  | normal | normal | 0/4
+  SYN134 | normal |  ANOM | normal | normal | 1/4
+  SYN135 | normal |   ok  | normal | normal | 0/4
+  SYN136 | normal |   ok  | normal | normal | 0/4
+  SYN137 | normal |   ok  | normal | normal | 0/4
+  SYN138 | normal |   ok  | normal | normal | 0/4
+  SYN139 | normal |   ok  | normal | normal | 0/4
+  SYN140 | normal |   ok  | normal | normal | 0/4
+  SYN141 | normal |   ok  | normal | normal | 0/4
+  SYN142 | normal |   ok  | normal | normal | 0/4
+  SYN143 | normal |   ok  | normal | normal | 0/4
+  SYN144 | normal |   ok  | normal | normal | 0/4
+  SYN145 | normal |   ok  | normal | normal | 0/4
+  SYN146 | normal |   ok  | normal | normal | 0/4
+  SYN147 | normal |   ok  | normal | normal | 0/4
+  SYN148 | normal |   ok  | normal | normal | 0/4
+  SYN149 | normal |   ok  | normal | normal | 0/4
+  SYN150 | normal |   ok  | normal | normal | 0/4
+  SYN151 | normal |   ok  | normal | normal | 0/4
+  SYN152 | normal |   ok  | normal | normal | 0/4
+  SYN153 | normal |   ok  | normal | normal | 0/4
+  SYN154 | normal |   ok  | normal | normal | 0/4
+  SYN155 | normal |   ok  | normal | normal | 0/4
+  SYN156 | normal |  ANOM | normal | normal | 1/4
+  SYN157 | normal |   ok  | normal | normal | 0/4
+  SYN158 |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+  SYN159 | normal |   ok  | normal | normal | 0/4
+  SYN160 | normal |   ok  | normal | normal | 0/4
+  SYN161 | normal |   ok  | normal | normal | 0/4
+  SYN162 | normal |   ok  | normal | normal | 0/4
+  SYN163 | normal |   ok  | normal | normal | 0/4
+  SYN164 | normal |   ok  | normal | normal | 0/4
+  SYN165 | normal |   ok  | normal | normal | 0/4
+  SYN166 | normal |  ANOM | normal | normal | 1/4
+  SYN167 | normal |   ok  | normal | normal | 0/4
+  SYN168 | normal |   ok  | normal | normal | 0/4
+  SYN169 | normal |   ok  | normal | normal | 0/4
+  SYN170 | normal |   ok  | normal | normal | 0/4
+  SYN171 | normal |   ok  | normal | normal | 0/4
+  SYN172 | normal |   ok  | normal | normal | 0/4
+  SYN173 | normal |   ok  | normal | normal | 0/4
+  SYN174 | normal |   ok  | normal | normal | 0/4
+  SYN175 | normal |   ok  | normal | normal | 0/4
+  SYN176 | normal |   ok  | normal | normal | 0/4
+  SYN177 | normal |   ok  | normal | normal | 0/4
+  SYN178 | normal |   ok  | normal | normal | 0/4
+  SYN179 | normal |   ok  | normal | normal | 0/4
+  SYN180 | normal |   ok  | normal | normal | 0/4
+  SYN181 | normal |   ok  | normal | normal | 0/4
+  SYN182 | normal |   ok  | normal | normal | 0/4
+  SYN183 | normal |   ok  | normal | normal | 0/4
+  SYN184 | normal |   ok  | normal | normal | 0/4
+  SYN185 | normal |   ok  | normal | normal | 0/4
+  SYN186 | normal |   ok  | normal | normal | 0/4
+  SYN187 | normal |  ANOM | normal | normal | 1/4
+  SYN188 | normal |   ok  | normal | normal | 0/4
+  SYN189 | normal |  ANOM | normal | normal | 1/4
+  SYN190 | normal |   ok  | normal | normal | 0/4
+  SYN191 | normal |   ok  | normal | normal | 0/4
+  SYN192 | normal |  ANOM | normal | normal | 1/4
+  SYN193 | normal |   ok  | normal | normal | 0/4
+  SYN194 | normal |   ok  | normal | normal | 0/4
+  SYN195 | normal |   ok  | normal | normal | 0/4
+  SYN196 |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
+  SYN197 | normal |   ok  | normal | normal | 0/4
+  SYN198 | normal |   ok  | normal | normal | 0/4
+  SYN199 | normal |  ANOM | normal | normal | 1/4
+  SYN200 | normal |   ok  | normal | normal | 0/4
+  SYN201 | normal |   ok  | normal | normal | 0/4
+  SYN202 | normal |   ok  | normal | normal | 0/4
+  SYN203 | normal |   ok  | normal | normal | 0/4
+  SYN204 | normal |   ok  | normal | normal | 0/4
+  SYN205 | normal |  ANOM | normal | normal | 1/4
+  SYN206 | normal |   ok  | normal | normal | 0/4
+  SYN207 | normal |  ANOM | normal | normal | 1/4
+  SYN208 | normal |   ok  | normal | normal | 0/4
+  SYN209 | normal |   ok  | normal | normal | 0/4
+  SYN210 | normal |   ok  | normal | normal | 0/4
+  SYN211 | normal |   ok  | normal | normal | 0/4
+  SYN212 | normal |  ANOM | normal | normal | 1/4
+  SYN213 | normal |   ok  | normal | normal | 0/4
+  SYN214 | normal |   ok  | normal | normal | 0/4
+  SYN215 | normal |   ok  | normal | normal | 0/4
+  SYN216 | normal |   ok  | normal | normal | 0/4
+  SYN217 | normal |   ok  | normal | normal | 0/4
+  SYN218 | normal |   ok  | normal | normal | 0/4
+  SYN219 | normal |   ok  | normal | normal | 0/4
+  SYN220 | normal |   ok  | normal | normal | 0/4
+     TRX | normal |  ANOM | normal | normal | 1/4
+     UNI | normal |  ANOM | normal | normal | 1/4
+    USDC | normal |  ANOM | normal | normal | 1/4
     USDT |   ANOM |  ANOM | normal | normal | 2/4 <-- revisar
     WBTC | normal |  ANOM | normal | normal | 1/4
      XEM |   ANOM |  ANOM |   ANOM |   ANOM | 4/4 <-- ROBUSTO
@@ -43,63 +263,109 @@ Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM
        XEM: alta volatilidad, alto retorno historico, volumen bajo
 
   Señalada por 2 algoritmo(s):
-      USDC: baja volatilidad, bajo retorno historico, drawdown atipico (posible stablecoin)
-      USDT: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+       BTC: alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+      DOGE: alta volatilidad, alto retorno historico
+       DOT: alta volatilidad, alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+       ETH: alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN026: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN158: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN196: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+      USDT: baja volatilidad, volumen alto, drawdown atipico (posible stablecoin)
 
   Señalada por 1 algoritmo(s):
-       BTC: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
-      DOGE: alta volatilidad, alto retorno historico
-       ETH: baja volatilidad, volumen alto
+      AAVE: alta volatilidad, alto retorno historico, drawdown atipico (posible stablecoin)
+       ADA: alta volatilidad, alto retorno historico, volumen alto
+       BNB: alta volatilidad, alto retorno historico, drawdown atipico (posible stablecoin)
+       EOS: alta volatilidad, alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+      LINK: alta volatilidad, alto retorno historico, drawdown atipico (posible stablecoin)
        SOL: alta volatilidad, alto retorno historico, volumen bajo, drawdown atipico (posible stablecoin)
-      WBTC: baja volatilidad, volumen bajo, drawdown atipico (posible stablecoin)
+    SYN002: baja volatilidad, bajo retorno historico, volumen bajo, drawdown atipico (posible stablecoin)
+    SYN009: bajo retorno historico, volumen bajo
+    SYN016: baja volatilidad, alto retorno historico, drawdown atipico (posible stablecoin)
+    SYN021: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN052: bajo retorno historico
+    SYN062: baja volatilidad, bajo retorno historico, drawdown atipico (posible stablecoin)
+    SYN071: bajo retorno historico
+    SYN078: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN085: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN086: baja volatilidad, drawdown atipico (posible stablecoin)
+    SYN087: bajo retorno historico
+    SYN093: alta volatilidad, alto retorno historico, volumen bajo
+    SYN094: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN104: baja volatilidad, bajo retorno historico, volumen bajo
+    SYN106: baja volatilidad, drawdown atipico (posible stablecoin)
+    SYN112: bajo retorno historico
+    SYN117: alta volatilidad, alto retorno historico
+    SYN128: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN129: baja volatilidad, volumen bajo, drawdown atipico (posible stablecoin)
+    SYN134: baja volatilidad, bajo retorno historico, volumen bajo
+    SYN156: alta volatilidad, alto retorno historico, volumen bajo
+    SYN166: bajo retorno historico, volumen alto
+    SYN187: bajo retorno historico
+    SYN189: bajo retorno historico
+    SYN192: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN199: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN205: baja volatilidad, drawdown atipico (posible stablecoin)
+    SYN207: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+    SYN212: baja volatilidad, bajo retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+       TRX: alta volatilidad, alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+       UNI: alta volatilidad, alto retorno historico, volumen alto, drawdown atipico (posible stablecoin)
+      USDC: baja volatilidad, bajo retorno historico, drawdown atipico (posible stablecoin)
+      WBTC: alto retorno historico, volumen bajo, drawdown atipico (posible stablecoin)
 
-  Normal en todos los algoritmos (15):
-    AAVE, ADA, ATOM, BNB, CRO, DOT, EOS, LINK, LTC, MIOTA, TRX, UNI, XLM, XMR, XRP
+  Normal en todos los algoritmos (195):
+    ATOM, CRO, LTC, MIOTA, SYN001, SYN003, SYN004, SYN005, SYN006, SYN007, SYN008, SYN010, SYN011, SYN012, SYN013, SYN014, SYN015, SYN017, SYN018, SYN019, SYN020, SYN022, SYN023, SYN024, SYN025, SYN027, SYN028, SYN029, SYN030, SYN031, SYN032, SYN033, SYN034, SYN035, SYN036, SYN037, SYN038, SYN039, SYN040, SYN041, SYN042, SYN043, SYN044, SYN045, SYN046, SYN047, SYN048, SYN049, SYN050, SYN051, SYN053, SYN054, SYN055, SYN056, SYN057, SYN058, SYN059, SYN060, SYN061, SYN063, SYN064, SYN065, SYN066, SYN067, SYN068, SYN069, SYN070, SYN072, SYN073, SYN074, SYN075, SYN076, SYN077, SYN079, SYN080, SYN081, SYN082, SYN083, SYN084, SYN088, SYN089, SYN090, SYN091, SYN092, SYN095, SYN096, SYN097, SYN098, SYN099, SYN100, SYN101, SYN102, SYN103, SYN105, SYN107, SYN108, SYN109, SYN110, SYN111, SYN113, SYN114, SYN115, SYN116, SYN118, SYN119, SYN120, SYN121, SYN122, SYN123, SYN124, SYN125, SYN126, SYN127, SYN130, SYN131, SYN132, SYN133, SYN135, SYN136, SYN137, SYN138, SYN139, SYN140, SYN141, SYN142, SYN143, SYN144, SYN145, SYN146, SYN147, SYN148, SYN149, SYN150, SYN151, SYN152, SYN153, SYN154, SYN155, SYN157, SYN159, SYN160, SYN161, SYN162, SYN163, SYN164, SYN165, SYN167, SYN168, SYN169, SYN170, SYN171, SYN172, SYN173, SYN174, SYN175, SYN176, SYN177, SYN178, SYN179, SYN180, SYN181, SYN182, SYN183, SYN184, SYN185, SYN186, SYN188, SYN190, SYN191, SYN193, SYN194, SYN195, SYN197, SYN198, SYN200, SYN201, SYN202, SYN203, SYN204, SYN206, SYN208, SYN209, SYN210, SYN211, SYN213, SYN214, SYN215, SYN216, SYN217, SYN218, SYN219, SYN220, XLM, XMR, XRP
 
 -----------------------------------------------------------------
 3. SEGMENTACION DEL MERCADO (DBSCAN)
 -----------------------------------------------------------------
 
-  Anomalias / comportamiento unico (6):
-    BTC, DOGE, ETH, USDC, USDT, XEM
+  Anomalias / comportamiento unico (9 total — 6 reales, 3 sintéticas):
+    Reales: BTC, DOGE, DOT, ETH, USDT, XEM
 
-  Grupo DeFi y nuevos protocolos (6):
-    AAVE, BNB, DOT, SOL, UNI, WBTC
+  Cluster 0 (3 total — 3 reales, 0 sintéticas):
+    Reales: AAVE, BNB, SOL
 
-  Altcoins establecidos (11):
-    ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, XLM, XMR, XRP
+  Cluster 1 (220 total — 13 reales, 207 sintéticas):
+    Reales: ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, UNI, WBTC, XLM, XMR, XRP
+
+  Cluster 2 (9 total — 1 reales, 8 sintéticas):
+    Reales: USDC
+
+  Cluster 3 (2 total — 0 reales, 2 sintéticas):
+    Reales: (ninguna)
 
 -----------------------------------------------------------------
 4. PERFIL DE GRUPOS — K-MEANS K=4
 -----------------------------------------------------------------
 
-  Cluster 0 — XEM — outlier extremo:
-    Monedas    : XEM
-    Volatilidad: 4.553341 (media del grupo)
-    Retorno    : 4.601700
-    Sharpe     : -0.0927
-    Max DD     : -0.8284
+  Cluster 0 (93 total — 18 reales, 75 sintéticas):
+    Reales     : AAVE, ADA, ATOM, BNB, CRO, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, WBTC, XLM, XMR, XRP
+    Volatilidad: -0.077794 (media del grupo)
+    Retorno    : -0.075493
+    Sharpe     : 0.9422
+    Max DD     : 0.1715
 
-  Cluster 1 — Mercado general (20 monedas):
-    Monedas    : AAVE, ADA, ATOM, BNB, BTC, CRO, DOGE, DOT, EOS, ETH, LINK, LTC, MIOTA, SOL, TRX, UNI, WBTC, XLM, XMR, XRP
-    Volatilidad: -0.201615 (media del grupo)
-    Retorno    : -0.204849
-    Sharpe     : 0.1993
-    Max DD     : -0.2436
+  Cluster 1 (133 total — 1 reales, 132 sintéticas):
+    Reales     : DOGE
+    Volatilidad: -0.049850 (media del grupo)
+    Retorno    : -0.052913
+    Sharpe     : -0.5742
+    Max DD     : -0.4794
 
-  Cluster 2 — USDT — stablecoin dominante en volumen:
-    Monedas    : USDT
-    Volatilidad: -0.260517 (media del grupo)
-    Retorno    : -0.252359
-    Sharpe     : -1.8904
-    Max DD     : 2.7851
+  Cluster 2 (16 total — 3 reales, 13 sintéticas):
+    Reales     : BTC, USDC, USDT
+    Volatilidad: -0.077794 (media del grupo)
+    Retorno    : -0.075493
+    Sharpe     : -0.7912
+    Max DD     : 3.0256
 
-  Cluster 3 — USDC — stablecoin de menor volumen:
-    Monedas    : USDC
-    Volatilidad: -0.260517 (media del grupo)
-    Retorno    : -0.252359
-    Sharpe     : -2.0020
-    Max DD     : 2.9157
+  Cluster 3 (1 total — 1 reales, 0 sintéticas):
+    Reales     : XEM
+    Volatilidad: 15.109613 (media del grupo)
+    Retorno    : 15.266146
+    Sharpe     : 1.4035
+    Max DD     : -0.6012
 
 -----------------------------------------------------------------
 5. LLAMADO A LA ACCION — FASE SUPERVISADA
@@ -119,9 +385,9 @@ Algoritmos: K-Means (K=2, K=4), DBSCAN, Agglomerative (K=2), One-Class SVM
      → Incluir 'DBSCAN' (binarizado: -1 vs normal) para capturar outliers de densidad.
 
   C. SEGMENTACION PARA MODELADO
-     → Grupo DeFi (AAVE, BNB, DOT, SOL, UNI, WBTC):
+     → Grupo DeFi (AAVE, BNB, SOL):
         Alta correlacion interna. Considerar modelo separado o feature de grupo.
-     → Altcoins establecidos (ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, XLM, XMR, XRP):
+     → Altcoins establecidos (ADA, ATOM, CRO, EOS, LINK, LTC, MIOTA, TRX, UNI, WBTC, XLM, XMR, XRP):
         Comportamiento homogeneo. Pueden modelarse conjuntamente.
      → BTC y ETH: anomalias de densidad (DBSCAN) pero no de features globales (SVM).
         Son los mejores candidatos como targets principales del modelo supervisado
