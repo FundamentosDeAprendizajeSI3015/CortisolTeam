@@ -110,7 +110,7 @@ BASE_FEATURES = [
 ]
 
 # Diverse pool parameters (improvement 1)
-NUM_KERNELS   = 30    # total weak kernels in the diverse pool
+NUM_KERNELS   = 10    # total weak kernels in the diverse pool
 MAX_FEATURES  = 8     # max features sampled per kernel (out of 16)
 POLY_DEGREES  = (2, 3, 4)
 GAMMA_SCALES  = (0.01, 0.1, 1.0, 10.0)   # multiplied by 1/n_features internally
@@ -124,10 +124,12 @@ CV_FOLDS      = 3                          # internal CV folds for C selection
 
 RANDOM_STATE  = 42
 TEST_FRACTION = 0.15
+# SVM is O(n²) — cap training samples to keep runtime tractable.
+MAX_SVM_TRAIN = 2_000
 
 # Sweep parameters for the ablation plot (Fig 34)
-KERNEL_SWEEP  = [5, 10, 15, 20, 25, 30]
-SWEEP_ITERS   = 3
+KERNEL_SWEEP  = [5, 10, 15]
+SWEEP_ITERS   = 1
 
 
 # ── Data loading ────────────────────────────────────────────────────────────
@@ -155,6 +157,10 @@ def load_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     df = pd.read_parquet(DATA_PATH)
     df['Date'] = pd.to_datetime(df['Date'])
     df = df.sort_values(['Symbol', 'Date']).reset_index(drop=True)
+    # SVM-MKL trains only on real coins — synthetic rows are excluded to avoid
+    # GBM-generated price paths distorting the kernel alignment metrics.
+    if 'is_synthetic' in df.columns:
+        df = df[~df['is_synthetic']].copy()
     df = df.dropna(subset=BASE_FEATURES + ['target'])
 
     # Temporal split — cut on unique date axis to avoid per-symbol leakage
@@ -167,6 +173,13 @@ def load_data() -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
           f'({train["Date"].min().date()} → {train["Date"].max().date()})')
     print(f'  Test : {len(test):>6} rows  '
           f'({test["Date"].min().date()} → {test["Date"].max().date()})')
+
+    if len(train) > MAX_SVM_TRAIN:
+        rng = np.random.default_rng(RANDOM_STATE)
+        idx = rng.choice(len(train), size=MAX_SVM_TRAIN, replace=False)
+        idx.sort()
+        train = train.iloc[idx]
+        print(f'  [sample] Train reducido a {MAX_SVM_TRAIN:,} filas para SVM')
 
     scaler  = MinMaxScaler()
     X_train = scaler.fit_transform(train[BASE_FEATURES].values)
