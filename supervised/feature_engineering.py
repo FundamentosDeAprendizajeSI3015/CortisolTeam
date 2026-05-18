@@ -42,7 +42,7 @@ def cargar_datos(path: Path) -> pd.DataFrame:
     except FileNotFoundError:
         raise FileNotFoundError(f'No se encontró el archivo: {path}')
 
-    df['Date'] = pd.to_datetime(df['Date'])
+    df['Date'] = pd.to_datetime(df['Date'], format='mixed')
     df = df.sort_values(['Symbol', 'Date']).reset_index(drop=True)
 
     simbolos_validos = ~df['Symbol'].isin(SYMBOLS_EXCLUIR)
