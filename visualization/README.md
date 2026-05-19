@@ -2,7 +2,7 @@
 
 Modulo para generar visualizaciones de EDA y clustering, y construir un dashboard interactivo con Dash.
 
-## Resumen de entrega (version corta)
+## Resumen de entrega
 
 - Scripts del modulo: `app/visualize.py`, `app/dash_app.py`
 - Salida principal: dashboard Dash en `visualization/app/dash_app.py` y figuras en `visualization/outputs/`
