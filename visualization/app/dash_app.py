@@ -1,13 +1,8 @@
 """
-Dash Interactive Dashboard - Crypto ML Project
+Dashboard interactivo en Dash - Crypto ML Project
 
-Run:
+Ejecucion:
     python visualization/app/dash_app.py
-
-Notes:
-- Uses Plotly + Dash for interactive charts and filters.
-- Reads metrics_summary.csv and clustering features.
-- If crypto_raw.csv is missing, EDA charts show placeholders.
 """
 
 from __future__ import annotations
@@ -20,11 +15,12 @@ import plotly.express as px
 import plotly.graph_objects as go
 from dash import Dash, Input, Output, dcc, html, dash_table
 from sklearn.decomposition import PCA
+from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
 
 
 # -----------------------------------------------------------------------------
-# Paths and data loading
+# Rutas y carga de datos
 # -----------------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -34,7 +30,7 @@ CRYPTO_RAW_ENV = os.getenv("CRYPTO_RAW_PATH")
 CRYPTO_RAW = Path(CRYPTO_RAW_ENV) if CRYPTO_RAW_ENV else DATA_DIR / "crypto_raw.csv"
 FEATURES_PATH = DATA_DIR / "features_clustering.csv"
 CLUSTERS_PATH = DATA_DIR / "cluster_labels.csv"
-METRICS_PATH = ROOT / "scoring" / "reports" / "metrics_summary.csv"
+SUPERVISED_REPORT = ROOT / "supervised" / "reports" / "supervised_report.md"
 
 
 def read_csv_safe(path: Path) -> pd.DataFrame | None:
@@ -44,6 +40,83 @@ def read_csv_safe(path: Path) -> pd.DataFrame | None:
         return pd.read_csv(path)
     except Exception:
         return None
+
+
+def read_lines_safe(path: Path) -> list[str] | None:
+    if not path.exists():
+        return None
+    try:
+        return path.read_text(encoding="utf-8").splitlines()
+    except Exception:
+        return None
+
+
+def parse_md_row(line: str) -> list[str]:
+    return [col.strip() for col in line.strip().strip("|").split("|")]
+
+
+def parse_markdown_table(lines: list[str], header_token: str) -> pd.DataFrame | None:
+    for i, line in enumerate(lines):
+        if line.strip().startswith("|") and header_token in line:
+            if i + 2 >= len(lines):
+                return None
+            header = parse_md_row(line)
+            rows = []
+            for j in range(i + 2, len(lines)):
+                if not lines[j].strip().startswith("|"):
+                    break
+                rows.append(parse_md_row(lines[j]))
+            if not rows:
+                return None
+            return pd.DataFrame(rows, columns=header)
+    return None
+
+
+def load_supervised_metrics(report_path: Path) -> tuple[pd.DataFrame | None, pd.DataFrame | None]:
+    lines = read_lines_safe(report_path)
+    if not lines:
+        return None, None
+
+    class_df = parse_markdown_table(lines, "CV_AUC")
+    reg_df = parse_markdown_table(lines, "CV_MAE")
+
+    if class_df is not None:
+        class_df = class_df.rename(
+            columns={
+                "Modelo": "Model",
+                "CV_AUC": "CV_AUC_mean",
+                "Val_Acc": "Val_Accuracy",
+                "Val_F1": "Val_F1",
+                "Val_AUC": "Val_ROC_AUC",
+                "Test_Acc": "Test_Accuracy",
+                "Test_F1": "Test_F1",
+                "Test_AUC": "Test_ROC_AUC",
+            }
+        )
+        for col in class_df.columns:
+            if col != "Model":
+                class_df[col] = pd.to_numeric(class_df[col], errors="coerce")
+        class_df = class_df.round(3)
+
+    if reg_df is not None:
+        reg_df = reg_df.rename(
+            columns={
+                "Modelo": "Model",
+                "CV_MAE": "CV_MAE_mean",
+                "Val_MAE": "Val_MAE",
+                "Val_RMSE": "Val_RMSE",
+                "Val_R2": "Val_R2",
+                "Test_MAE": "Test_MAE",
+                "Test_RMSE": "Test_RMSE",
+                "Test_R2": "Test_R2",
+            }
+        )
+        for col in reg_df.columns:
+            if col != "Model":
+                reg_df[col] = pd.to_numeric(reg_df[col], errors="coerce")
+        reg_df = reg_df.round(3)
+
+    return class_df, reg_df
 
 
 def empty_figure(message: str) -> go.Figure:
@@ -67,15 +140,15 @@ def empty_figure(message: str) -> go.Figure:
     return fig
 
 
-# Load datasets
-DF_METRICS = read_csv_safe(METRICS_PATH)
+# Cargar datasets
 DF_FEATURES = read_csv_safe(FEATURES_PATH)
 DF_CLUSTERS = read_csv_safe(CLUSTERS_PATH)
 DF_CRYPTO = read_csv_safe(CRYPTO_RAW)
+DF_CLASS, DF_REG = load_supervised_metrics(SUPERVISED_REPORT)
 
 
 # -----------------------------------------------------------------------------
-# Data preparation
+# Preparacion de datos
 # -----------------------------------------------------------------------------
 
 CRYPTO_AVAILABLE = False
@@ -104,6 +177,7 @@ if DF_CRYPTO is not None:
 
 PCA_DATA = None
 CLUSTER_COLUMNS: list[str] = []
+DF_CLUSTER = None
 
 if DF_FEATURES is not None and DF_CLUSTERS is not None:
     if "Symbol" in DF_FEATURES.columns and "Symbol" in DF_CLUSTERS.columns:
@@ -119,16 +193,34 @@ if DF_FEATURES is not None and DF_CLUSTERS is not None:
             merged["PC2"] = comps[:, 1]
             PCA_DATA = merged
 
-
-# Metrics splits
-DF_CLASS = None
-DF_REG = None
-DF_CLUSTER = None
-
-if DF_METRICS is not None and "Type" in DF_METRICS.columns:
-    DF_CLASS = DF_METRICS[DF_METRICS["Type"] == "Classification"].copy()
-    DF_REG = DF_METRICS[DF_METRICS["Type"] == "Regression"].copy()
-    DF_CLUSTER = DF_METRICS[DF_METRICS["Type"] == "Clustering"].copy()
+            rows = []
+            for col in CLUSTER_COLUMNS:
+                labels = merged[col].values
+                valid_mask = labels != -1
+                unique_labels = sorted(set(labels[valid_mask]))
+                n_clusters = len(unique_labels)
+                row = {
+                    "Model": col,
+                    "N_Clusters": float(n_clusters),
+                }
+                if n_clusters >= 2 and valid_mask.sum() >= 2:
+                    try:
+                        row["Silhouette"] = silhouette_score(scaled[valid_mask], labels[valid_mask])
+                        row["Davies_Bouldin"] = davies_bouldin_score(scaled[valid_mask], labels[valid_mask])
+                        row["Calinski_Harabasz"] = calinski_harabasz_score(
+                            scaled[valid_mask], labels[valid_mask]
+                        )
+                    except Exception:
+                        row["Silhouette"] = None
+                        row["Davies_Bouldin"] = None
+                        row["Calinski_Harabasz"] = None
+                else:
+                    row["Silhouette"] = None
+                    row["Davies_Bouldin"] = None
+                    row["Calinski_Harabasz"] = None
+                rows.append(row)
+            DF_CLUSTER = pd.DataFrame(rows)
+            DF_CLUSTER = DF_CLUSTER.round(3)
 
 
 CLASS_METRICS = {
@@ -148,7 +240,7 @@ REG_METRICS = {
     "Test MAE": "Test_MAE",
     "Val RMSE": "Val_RMSE",
     "Test RMSE": "Test_RMSE",
-    "CV R2 Mean": "CV_R2_mean",
+    "CV MAE Mean": "CV_MAE_mean",
 }
 
 CLUSTER_METRICS = {
@@ -170,7 +262,7 @@ CLASS_TABLE_COLS = [
 
 REG_TABLE_COLS = [
     "Model",
-    "CV_R2_mean",
+    "CV_MAE_mean",
     "Val_MAE",
     "Val_RMSE",
     "Val_R2",
@@ -186,6 +278,10 @@ CLUSTER_TABLE_COLS = [
     "Davies_Bouldin",
     "Calinski_Harabasz",
 ]
+
+TABLE_LABELS = {
+    "Model": "Modelo",
+}
 
 
 def best_model(df: pd.DataFrame | None, metric: str, maximize: bool = True) -> tuple[str, float] | None:
@@ -205,11 +301,11 @@ def best_model(df: pd.DataFrame | None, metric: str, maximize: bool = True) -> t
 def format_kpi(value: float | None) -> str:
     if value is None:
         return "n/a"
-    return f"{value:.4f}"
+    return f"{value:.3f}"
 
 
 # -----------------------------------------------------------------------------
-# Dash app
+# Aplicacion Dash
 # -----------------------------------------------------------------------------
 
 ASSETS_DIR = Path(__file__).resolve().parent / "assets"
@@ -226,33 +322,33 @@ status_cards = html.Div(
         html.Div(
             className=f"status-card {'ok' if CRYPTO_AVAILABLE else 'warn'}",
             children=[
-                html.Div("Crypto raw", className="status-title"),
-                html.Div("Loaded" if CRYPTO_AVAILABLE else "Missing", className="status-value"),
+                html.Div("Datos cripto", className="status-title"),
+                html.Div("Cargado" if CRYPTO_AVAILABLE else "Falta", className="status-value"),
                 html.Div("CRYPTO_RAW_PATH" if CRYPTO_RAW_ENV else "data/crypto_raw.csv", className="status-meta"),
             ],
         ),
         html.Div(
             className=f"status-card {'ok' if DF_FEATURES is not None else 'warn'}",
             children=[
-                html.Div("Clustering features", className="status-title"),
-                html.Div("Loaded" if DF_FEATURES is not None else "Missing", className="status-value"),
+                html.Div("Features de clustering", className="status-title"),
+                html.Div("Cargado" if DF_FEATURES is not None else "Falta", className="status-value"),
                 html.Div("data/features_clustering.csv", className="status-meta"),
             ],
         ),
         html.Div(
             className=f"status-card {'ok' if DF_CLUSTERS is not None else 'warn'}",
             children=[
-                html.Div("Cluster labels", className="status-title"),
-                html.Div("Loaded" if DF_CLUSTERS is not None else "Missing", className="status-value"),
+                html.Div("Etiquetas de cluster", className="status-title"),
+                html.Div("Cargado" if DF_CLUSTERS is not None else "Falta", className="status-value"),
                 html.Div("data/cluster_labels.csv", className="status-meta"),
             ],
         ),
         html.Div(
-            className=f"status-card {'ok' if DF_METRICS is not None else 'warn'}",
+            className=f"status-card {'ok' if DF_CLASS is not None else 'warn'}",
             children=[
-                html.Div("Metrics summary", className="status-title"),
-                html.Div("Loaded" if DF_METRICS is not None else "Missing", className="status-value"),
-                html.Div("scoring/reports/metrics_summary.csv", className="status-meta"),
+                html.Div("Reporte supervisado", className="status-title"),
+                html.Div("Cargado" if DF_CLASS is not None else "Falta", className="status-value"),
+                html.Div("supervised/reports/supervised_report.md", className="status-meta"),
             ],
         ),
     ],
@@ -268,7 +364,7 @@ kpi_cards = html.Div(
         html.Div(
             className="kpi-card",
             children=[
-                html.Div("Best classifier", className="kpi-title"),
+                html.Div("Mejor clasificador", className="kpi-title"),
                 html.Div(best_clf[0] if best_clf else "n/a", className="kpi-value"),
                 html.Div(f"Test ROC AUC: {format_kpi(best_clf[1] if best_clf else None)}", className="kpi-meta"),
             ],
@@ -276,7 +372,7 @@ kpi_cards = html.Div(
         html.Div(
             className="kpi-card",
             children=[
-                html.Div("Best regressor", className="kpi-title"),
+                html.Div("Mejor regresor", className="kpi-title"),
                 html.Div(best_reg[0] if best_reg else "n/a", className="kpi-value"),
                 html.Div(f"Test R2: {format_kpi(best_reg[1] if best_reg else None)}", className="kpi-meta"),
             ],
@@ -284,7 +380,7 @@ kpi_cards = html.Div(
         html.Div(
             className="kpi-card",
             children=[
-                html.Div("Best clustering", className="kpi-title"),
+                html.Div("Mejor clustering", className="kpi-title"),
                 html.Div(best_cluster[0] if best_cluster else "n/a", className="kpi-value"),
                 html.Div(f"Silhouette: {format_kpi(best_cluster[1] if best_cluster else None)}", className="kpi-meta"),
             ],
@@ -302,12 +398,14 @@ app.layout = html.Div(
                 html.Div(
                     className="hero-text",
                     children=[
-                        html.H1("Crypto ML Dashboard"),
-                        html.P("Interactive model comparisons and performance metrics"),
-                        html.Div("Plotly + Dash", className="hero-chip"),
+                        html.H1("Dashboard - Análisis Cripto con ML"),
+                        html.P("Comparacion de modelos y metricas de rendimiento"),
                     ],
                 ),
-                html.Div(className="hero-note", children="EDA, clustering, supervised models, and scoring in one place."),
+                html.Div(
+                    className="hero-note",
+                    children="Cortisol Team.",
+                ),
             ],
         ),
         status_cards,
@@ -327,8 +425,8 @@ app.layout = html.Div(
                                 html.Div(
                                     className="panel-header",
                                     children=[
-                                        html.H3("Exploratory data analysis"),
-                                        html.P("Interactive views of prices, returns, and volatility."),
+                                        html.H3("Análisis exploratorio de datos"),
+                                        html.P("Vistas interactivas de precios, retornos y volatilidad."),
                                     ],
                                 ),
                                 html.Div(
@@ -337,7 +435,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Symbol"),
+                                                html.Label("Simbolo"),
                                                 dcc.Dropdown(
                                                     id="eda-symbol",
                                                     options=[{"label": s, "value": s} for s in CRYPTO_SYMBOLS],
@@ -350,7 +448,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Date range"),
+                                                html.Label("Rango de fechas"),
                                                 dcc.DatePickerRange(
                                                     id="eda-date-range",
                                                     min_date_allowed=CRYPTO_DATE_MIN,
@@ -397,7 +495,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Cluster label"),
+                                                html.Label("Etiqueta de cluster"),
                                                 dcc.Dropdown(
                                                     id="cluster-algo",
                                                     options=[{"label": c, "value": c} for c in CLUSTER_COLUMNS],
@@ -414,7 +512,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Metric"),
+                                                html.Label("Metrica"),
                                                 dcc.Dropdown(
                                                     id="cluster-metric",
                                                     options=[{"label": k, "value": v} for k, v in CLUSTER_METRICS.items()],
@@ -436,7 +534,10 @@ app.layout = html.Div(
                                 dash_table.DataTable(
                                     id="cluster-table",
                                     data=(DF_CLUSTER[CLUSTER_TABLE_COLS].to_dict("records") if DF_CLUSTER is not None else []),
-                                    columns=[{"name": c, "id": c} for c in (CLUSTER_TABLE_COLS if DF_CLUSTER is not None else [])],
+                                    columns=[
+                                        {"name": TABLE_LABELS.get(c, c), "id": c}
+                                        for c in (CLUSTER_TABLE_COLS if DF_CLUSTER is not None else [])
+                                    ],
                                     page_size=6,
                                     style_table={"overflowX": "auto"},
                                     style_header={"backgroundColor": "#0f172a", "color": "white"},
@@ -467,7 +568,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Metric"),
+                                                html.Label("Metrica"),
                                                 dcc.Dropdown(
                                                     id="clf-metric",
                                                     options=[{"label": k, "value": v} for k, v in CLASS_METRICS.items()],
@@ -483,7 +584,10 @@ app.layout = html.Div(
                                 dash_table.DataTable(
                                     id="clf-table",
                                     data=(DF_CLASS[CLASS_TABLE_COLS].to_dict("records") if DF_CLASS is not None else []),
-                                    columns=[{"name": c, "id": c} for c in (CLASS_TABLE_COLS if DF_CLASS is not None else [])],
+                                    columns=[
+                                        {"name": TABLE_LABELS.get(c, c), "id": c}
+                                        for c in (CLASS_TABLE_COLS if DF_CLASS is not None else [])
+                                    ],
                                     page_size=6,
                                     style_table={"overflowX": "auto"},
                                     style_header={"backgroundColor": "#0f172a", "color": "white"},
@@ -507,7 +611,7 @@ app.layout = html.Div(
                                         html.Div(
                                             className="control",
                                             children=[
-                                                html.Label("Metric"),
+                                                html.Label("Metrica"),
                                                 dcc.Dropdown(
                                                     id="reg-metric",
                                                     options=[{"label": k, "value": v} for k, v in REG_METRICS.items()],
@@ -523,7 +627,10 @@ app.layout = html.Div(
                                 dash_table.DataTable(
                                     id="reg-table",
                                     data=(DF_REG[REG_TABLE_COLS].to_dict("records") if DF_REG is not None else []),
-                                    columns=[{"name": c, "id": c} for c in (REG_TABLE_COLS if DF_REG is not None else [])],
+                                    columns=[
+                                        {"name": TABLE_LABELS.get(c, c), "id": c}
+                                        for c in (REG_TABLE_COLS if DF_REG is not None else [])
+                                    ],
                                     page_size=6,
                                     style_table={"overflowX": "auto"},
                                     style_header={"backgroundColor": "#0f172a", "color": "white"},
@@ -554,7 +661,7 @@ app.layout = html.Div(
 )
 def update_eda(symbol: str | None, start_date: str | None, end_date: str | None):
     if not CRYPTO_AVAILABLE or symbol is None:
-        message = "crypto_raw.csv not available"
+        message = "crypto_raw.csv no disponible"
         return (
             empty_figure(message),
             empty_figure(message),
@@ -569,7 +676,7 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
         df = df[df["Date"] <= pd.to_datetime(end_date)]
 
     if df.empty:
-        message = "No data for selected range"
+        message = "Sin datos para el rango seleccionado"
         return (
             empty_figure(message),
             empty_figure(message),
@@ -577,33 +684,38 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
             empty_figure(message),
         )
 
-    fig_price = px.line(df, x="Date", y="Close", title="Close price")
+    fig_price = px.line(df, x="Date", y="Close", title="Precio de cierre")
     fig_price.update_layout(margin=dict(l=30, r=20, t=50, b=30))
+    fig_price.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
     df_returns = df.dropna(subset=["Return"]).copy()
     if df_returns.empty:
-        fig_returns = empty_figure("Not enough return data")
+        fig_returns = empty_figure("No hay suficientes datos de retornos")
     else:
-        fig_returns = px.histogram(df_returns, x="Return", nbins=60, title="Return distribution")
+        fig_returns = px.histogram(df_returns, x="Return", nbins=60, title="Distribucion de retornos")
         fig_returns.update_layout(margin=dict(l=30, r=20, t=50, b=30))
+        fig_returns.update_xaxes(tickformat=".3f", hoverformat=".3f")
+        fig_returns.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
     df_vol = df.dropna(subset=["RollingVol30", "RollingVol90"], how="all")
     if df_vol.empty:
-        fig_vol = empty_figure("Not enough volatility data")
+        fig_vol = empty_figure("No hay suficientes datos de volatilidad")
     else:
         fig_vol = px.line(
             df_vol,
             x="Date",
             y=["RollingVol30", "RollingVol90"],
-            title="Rolling volatility (30d / 90d)",
+            title="Volatilidad rodante (30d / 90d)",
         )
         fig_vol.update_layout(margin=dict(l=30, r=20, t=50, b=30))
+        fig_vol.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
     if "Volume" not in df.columns:
-        fig_volume = empty_figure("Volume column not found")
+        fig_volume = empty_figure("Columna Volume no encontrada")
     else:
-        fig_volume = px.area(df, x="Date", y="Volume", title="Trading volume")
+        fig_volume = px.area(df, x="Date", y="Volume", title="Volumen de trading")
         fig_volume.update_layout(margin=dict(l=30, r=20, t=50, b=30))
+        fig_volume.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
     return fig_price, fig_returns, fig_vol, fig_volume
 
@@ -614,7 +726,7 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
 )
 def update_cluster_pca(cluster_col: str | None):
     if PCA_DATA is None or not cluster_col or cluster_col not in PCA_DATA.columns:
-        return empty_figure("Clustering data not available")
+        return empty_figure("Datos de clustering no disponibles")
 
     df_plot = PCA_DATA.copy()
     df_plot["Cluster"] = df_plot[cluster_col].astype(str)
@@ -630,9 +742,11 @@ def update_cluster_pca(cluster_col: str | None):
         color_discrete_map=color_map,
         category_orders={"Cluster": cluster_values},
         hover_data=["Symbol"],
-        title=f"PCA projection ({cluster_col})",
+        title=f"Proyeccion PCA ({cluster_col})",
     )
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30))
+    fig.update_xaxes(tickformat=".3f", hoverformat=".3f")
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
 
@@ -642,16 +756,17 @@ def update_cluster_pca(cluster_col: str | None):
 )
 def update_cluster_metrics(metric: str | None):
     if DF_CLUSTER is None or DF_CLUSTER.empty or metric not in DF_CLUSTER.columns:
-        return empty_figure("Cluster metrics not available")
+        return empty_figure("Metricas de clustering no disponibles")
 
     df = DF_CLUSTER[["Model", metric]].dropna().copy()
     df[metric] = pd.to_numeric(df[metric], errors="coerce")
     df = df.dropna()
     if df.empty:
-        return empty_figure("Metric has no values")
+        return empty_figure("La metrica no tiene valores")
 
-    fig = px.bar(df, x="Model", y=metric, title="Clustering metric comparison")
+    fig = px.bar(df, x="Model", y=metric, title="Comparacion de metricas de clustering")
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
 
@@ -661,16 +776,17 @@ def update_cluster_metrics(metric: str | None):
 )
 def update_clf_metric(metric: str | None):
     if DF_CLASS is None or DF_CLASS.empty or metric not in DF_CLASS.columns:
-        return empty_figure("Classification metrics not available")
+        return empty_figure("Metricas de clasificacion no disponibles")
 
     df = DF_CLASS[["Model", metric]].dropna().copy()
     df[metric] = pd.to_numeric(df[metric], errors="coerce")
     df = df.dropna()
     if df.empty:
-        return empty_figure("Metric has no values")
+        return empty_figure("La metrica no tiene valores")
 
-    fig = px.bar(df, x="Model", y=metric, title="Classifier comparison")
+    fig = px.bar(df, x="Model", y=metric, title="Comparacion de clasificadores")
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
 
@@ -680,16 +796,17 @@ def update_clf_metric(metric: str | None):
 )
 def update_reg_metric(metric: str | None):
     if DF_REG is None or DF_REG.empty or metric not in DF_REG.columns:
-        return empty_figure("Regression metrics not available")
+        return empty_figure("Metricas de regresion no disponibles")
 
     df = DF_REG[["Model", metric]].dropna().copy()
     df[metric] = pd.to_numeric(df[metric], errors="coerce")
     df = df.dropna()
     if df.empty:
-        return empty_figure("Metric has no values")
+        return empty_figure("La metrica no tiene valores")
 
-    fig = px.bar(df, x="Model", y=metric, title="Regressor comparison")
+    fig = px.bar(df, x="Model", y=metric, title="Comparacion de regresores")
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
 
