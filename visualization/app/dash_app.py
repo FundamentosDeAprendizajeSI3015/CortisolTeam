@@ -13,10 +13,13 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from dash import Dash, Input, Output, dcc, html, dash_table
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
 from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import OneClassSVM
 
 
 # -----------------------------------------------------------------------------
@@ -175,6 +178,7 @@ if DF_CRYPTO is not None:
 
 
 PCA_DATA = None
+SCALED_FEATURES = None
 CLUSTER_COLUMNS: list[str] = []
 ANOMALY_COLUMNS: list[str] = []
 DF_CLUSTER = None
@@ -189,10 +193,42 @@ if DF_FEATURES is not None and DF_CLUSTERS is not None:
         if feature_cols:
             scaler = StandardScaler()
             scaled = scaler.fit_transform(merged[feature_cols].fillna(0))
+            SCALED_FEATURES = scaled
             pca = PCA(n_components=2, random_state=42)
             comps = pca.fit_transform(scaled)
             merged["PC1"] = comps[:, 0]
             merged["PC2"] = comps[:, 1]
+            # Agregar variantes extra de nu para OneClass SVM
+            extra_nu_values = [0.10, 0.15, 0.25, 0.30]
+            extra_anomaly_cols = []
+            for nu in extra_nu_values:
+                col_name = f"OneClassSVM_nu{int(nu * 100):03d}"
+                if col_name in merged.columns:
+                    extra_anomaly_cols.append(col_name)
+                    continue
+                try:
+                    model = OneClassSVM(kernel="rbf", nu=nu, gamma="scale")
+                    model.fit(scaled)
+                    merged[col_name] = model.predict(scaled)
+                    extra_anomaly_cols.append(col_name)
+                except Exception:
+                    continue
+
+            def anomaly_sort_key(name: str) -> tuple[int, int | str]:
+                if "nu" in name:
+                    try:
+                        value = int(name.split("nu", 1)[1])
+                        return (0, value)
+                    except ValueError:
+                        return (2, name)
+                if "consensus" in name:
+                    return (1, 0)
+                return (2, name)
+
+            ANOMALY_COLUMNS = sorted(
+                dict.fromkeys(ANOMALY_COLUMNS + extra_anomaly_cols).keys(),
+                key=anomaly_sort_key,
+            )
             PCA_DATA = merged
 
             rows = []
@@ -242,12 +278,6 @@ REG_METRICS = {
     "Test MAE": "Test_MAE",
     "Val RMSE": "Val_RMSE",
     "Test RMSE": "Test_RMSE",
-}
-
-CLUSTER_METRICS = {
-    "Silhouette": "Silhouette",
-    "Davies Bouldin": "Davies_Bouldin",
-    "Calinski Harabasz": "Calinski_Harabasz",
 }
 
 CLASS_TABLE_COLS = [
@@ -302,6 +332,113 @@ def format_kpi(value: float | None) -> str:
     if value is None:
         return "n/a"
     return f"{value:.3f}"
+
+
+def build_cluster_summary_figure() -> go.Figure:
+    if SCALED_FEATURES is None or SCALED_FEATURES.size == 0:
+        return empty_figure("Datos de clustering no disponibles")
+
+    n_samples = SCALED_FEATURES.shape[0]
+    if n_samples < 2:
+        return empty_figure("No hay suficientes datos para el metodo del codo")
+
+    max_k = min(10, n_samples)
+    k_values = list(range(2, max_k + 1))
+    inertia_values = []
+    silhouette_values = []
+    davies_values = []
+    for k in k_values:
+        try:
+            model = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels = model.fit_predict(SCALED_FEATURES)
+            inertia_values.append(model.inertia_)
+            silhouette_values.append(
+                silhouette_score(SCALED_FEATURES, labels) if k > 1 else None
+            )
+            davies_values.append(
+                davies_bouldin_score(SCALED_FEATURES, labels) if k > 1 else None
+            )
+        except Exception:
+            inertia_values.append(None)
+            silhouette_values.append(None)
+            davies_values.append(None)
+
+    df = pd.DataFrame(
+        {
+            "K": k_values,
+            "Inercia": inertia_values,
+            "Silhouette": silhouette_values,
+            "Davies_Bouldin": davies_values,
+        }
+    ).dropna(subset=["Inercia", "Silhouette", "Davies_Bouldin"], how="all")
+
+    if df.empty:
+        return empty_figure("No hay suficientes datos para las metricas de clustering")
+
+    recommended_k = None
+    if df["Silhouette"].notna().any():
+        recommended_k = int(df.loc[df["Silhouette"].idxmax(), "K"])
+    elif df["Davies_Bouldin"].notna().any():
+        recommended_k = int(df.loc[df["Davies_Bouldin"].idxmin(), "K"])
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=("Metodo del codo (KMeans)", "Silhouette Score", "Davies-Bouldin Index"),
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Inercia"], mode="lines+markers", name="Inercia"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Silhouette"], mode="lines+markers", name="Silhouette"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Davies_Bouldin"], mode="lines+markers", name="Davies-Bouldin"),
+        row=3,
+        col=1,
+    )
+
+    if recommended_k is not None:
+        fig.add_vline(
+            x=recommended_k,
+            line_dash="dash",
+            line_color="#ef4444",
+            annotation_text=f"K recomendado: {recommended_k}",
+            annotation_position="top",
+        )
+
+    fig.update_layout(
+        title="Metricas de clustering (K recomendado marcado)",
+        margin=dict(l=30, r=20, t=70, b=30),
+        showlegend=False,
+    )
+    fig.update_xaxes(dtick=1)
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
+    return fig
+
+
+CLUSTER_METRICS_FIG = build_cluster_summary_figure()
+
+
+def format_anomaly_label(col_name: str) -> str:
+    lower = col_name.lower()
+    if "nu" in lower:
+        try:
+            digits = lower.split("nu", 1)[1]
+            if digits.isdigit():
+                nu_value = int(digits) / 100
+                return f"OneClassSVM nu={nu_value:.2f}"
+        except Exception:
+            return col_name
+    if "consensus" in lower:
+        return "OneClassSVM consensus"
+    return col_name
 
 
 # -----------------------------------------------------------------------------
@@ -469,26 +606,13 @@ app.layout = html.Div(
                                                 ),
                                             ],
                                         ),
-                                        html.Div(
-                                            className="control",
-                                            children=[
-                                                html.Label("Metrica"),
-                                                dcc.Dropdown(
-                                                    id="cluster-metric",
-                                                    options=[{"label": k, "value": v} for k, v in CLUSTER_METRICS.items()],
-                                                    value=list(CLUSTER_METRICS.values())[0],
-                                                    clearable=False,
-                                                    disabled=DF_CLUSTER is None,
-                                                ),
-                                            ],
-                                        ),
                                     ],
                                 ),
                                 html.Div(
                                     className="graph-grid",
                                     children=[
                                         dcc.Graph(id="cluster-pca"),
-                                        dcc.Graph(id="cluster-metrics"),
+                                        dcc.Graph(id="cluster-metrics", figure=CLUSTER_METRICS_FIG),
                                     ],
                                 ),
                                 dash_table.DataTable(
@@ -524,7 +648,10 @@ app.layout = html.Div(
                                                 html.Label("Algoritmo OneClass SVM"),
                                                 dcc.Dropdown(
                                                     id="anomaly-algo",
-                                                    options=[{"label": c, "value": c} for c in ANOMALY_COLUMNS],
+                                                    options=[
+                                                        {"label": format_anomaly_label(c), "value": c}
+                                                        for c in ANOMALY_COLUMNS
+                                                    ],
                                                     value=(ANOMALY_COLUMNS[0] if ANOMALY_COLUMNS else None),
                                                     clearable=False,
                                                     disabled=not ANOMALY_COLUMNS,
@@ -745,26 +872,6 @@ def update_cluster_pca(cluster_col: str | None):
     )
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30))
     fig.update_xaxes(tickformat=".3f", hoverformat=".3f")
-    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
-    return fig
-
-
-@app.callback(
-    Output("cluster-metrics", "figure"),
-    Input("cluster-metric", "value"),
-)
-def update_cluster_metrics(metric: str | None):
-    if DF_CLUSTER is None or DF_CLUSTER.empty or metric not in DF_CLUSTER.columns:
-        return empty_figure("Metricas de clustering no disponibles")
-
-    df = DF_CLUSTER[["Model", metric]].dropna().copy()
-    df[metric] = pd.to_numeric(df[metric], errors="coerce")
-    df = df.dropna()
-    if df.empty:
-        return empty_figure("La metrica no tiene valores")
-
-    fig = px.bar(df, x="Model", y=metric, title="Comparacion de metricas de clustering")
-    fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
     fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
