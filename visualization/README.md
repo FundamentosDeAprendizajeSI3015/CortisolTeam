@@ -4,8 +4,8 @@ Modulo para generar visualizaciones de EDA y clustering, y construir un dashboar
 
 ## Resumen de entrega (version corta)
 
-- Scripts del modulo: `app/visualize.py`, `app/generate_dashboard.py`, `app/main.py`
-- Salida principal: `visualization/app/dashboard.html` y figuras en `visualization/outputs/`
+- Scripts del modulo: `app/visualize.py`, `app/generate_dashboard.py`, `app/main.py`, `app/dash_app.py`
+- Salida principal: `visualization/app/dashboard.html`, `visualization/app/dash_app.py` y figuras en `visualization/outputs/`
 - Total de visualizaciones activas: 13 PNG (EDA + clustering) + figuras supervisadas y de scoring
 - Datos de entrada: `data/crypto_raw.csv`, `data/features_clustering.csv`, `data/cluster_labels.csv`
 - Fuentes adicionales: `supervised/reports/figures/`, `scoring/reports/figures/`, `scoring/reports/metrics_summary.csv`, `scoring/reports/model_report.pdf`
@@ -78,6 +78,18 @@ Paquetes usados: pandas, numpy, matplotlib, seaborn, scikit-learn.
 python visualization/app/main.py
 ```
 
+### Dashboard interactivo (Dash)
+
+```bash
+python visualization/app/dash_app.py
+```
+
+Si el archivo `data/crypto_raw.csv` esta en otra ruta, puedes definir en PowerShell:
+
+```bash
+$env:CRYPTO_RAW_PATH = "C:\ruta\a\crypto_raw.csv"
+```
+
 
 ### Archivos del modulo
 
@@ -86,12 +98,18 @@ python visualization/app/main.py
 - `app/main.py`: orquesta ejecucion completa (figuras + dashboard).
 - `README.md`: documentacion consolidada del modulo.
 
-### Dashboard interactivo
+### Dashboard interactivo (HTML)
 
 - Archivo: `visualization/app/dashboard.html`
 - Navegacion por secciones: EDA, No Supervisado, Supervisado y Scoring.
 - Incluye tarjetas con descripcion y fecha de actualizacion automatica.
 - Compatible con escritorio y movil.
+
+### Dashboard interactivo (Dash)
+
+- Archivo: `visualization/app/dash_app.py`
+- Secciones: EDA, Supervisado y No supervisado.
+- Graficas interactivas con Plotly y filtros por metrica, rango de fechas y algoritmo.
 
 Funciones EDA:
 
