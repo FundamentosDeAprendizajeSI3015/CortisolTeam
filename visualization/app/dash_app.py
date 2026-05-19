@@ -13,10 +13,13 @@ from pathlib import Path
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 from dash import Dash, Input, Output, dcc, html, dash_table
+from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
+from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
+from sklearn.svm import OneClassSVM
 
 
 # -----------------------------------------------------------------------------
@@ -102,7 +105,6 @@ def load_supervised_metrics(report_path: Path) -> tuple[pd.DataFrame | None, pd.
         reg_df = reg_df.rename(
             columns={
                 "Modelo": "Model",
-                "CV_MAE": "CV_MAE_mean",
                 "Val_MAE": "Val_MAE",
                 "Val_RMSE": "Val_RMSE",
                 "Val_R2": "Val_R2",
@@ -176,21 +178,57 @@ if DF_CRYPTO is not None:
 
 
 PCA_DATA = None
+SCALED_FEATURES = None
 CLUSTER_COLUMNS: list[str] = []
+ANOMALY_COLUMNS: list[str] = []
 DF_CLUSTER = None
 
 if DF_FEATURES is not None and DF_CLUSTERS is not None:
     if "Symbol" in DF_FEATURES.columns and "Symbol" in DF_CLUSTERS.columns:
         CLUSTER_COLUMNS = [c for c in DF_CLUSTERS.columns if c != "Symbol"]
+        ANOMALY_COLUMNS = [c for c in CLUSTER_COLUMNS if "OneClass" in c]
+        CLUSTER_COLUMNS = [c for c in CLUSTER_COLUMNS if c not in ANOMALY_COLUMNS]
         merged = DF_FEATURES.merge(DF_CLUSTERS, on="Symbol", how="left")
         feature_cols = [c for c in DF_FEATURES.columns if c != "Symbol"]
         if feature_cols:
             scaler = StandardScaler()
             scaled = scaler.fit_transform(merged[feature_cols].fillna(0))
+            SCALED_FEATURES = scaled
             pca = PCA(n_components=2, random_state=42)
             comps = pca.fit_transform(scaled)
             merged["PC1"] = comps[:, 0]
             merged["PC2"] = comps[:, 1]
+            # Agregar variantes extra de nu para OneClass SVM
+            extra_nu_values = [0.10, 0.15, 0.25, 0.30]
+            extra_anomaly_cols = []
+            for nu in extra_nu_values:
+                col_name = f"OneClassSVM_nu{int(nu * 100):03d}"
+                if col_name in merged.columns:
+                    extra_anomaly_cols.append(col_name)
+                    continue
+                try:
+                    model = OneClassSVM(kernel="rbf", nu=nu, gamma="scale")
+                    model.fit(scaled)
+                    merged[col_name] = model.predict(scaled)
+                    extra_anomaly_cols.append(col_name)
+                except Exception:
+                    continue
+
+            def anomaly_sort_key(name: str) -> tuple[int, int | str]:
+                if "nu" in name:
+                    try:
+                        value = int(name.split("nu", 1)[1])
+                        return (0, value)
+                    except ValueError:
+                        return (2, name)
+                if "consensus" in name:
+                    return (1, 0)
+                return (2, name)
+
+            ANOMALY_COLUMNS = sorted(
+                dict.fromkeys(ANOMALY_COLUMNS + extra_anomaly_cols).keys(),
+                key=anomaly_sort_key,
+            )
             PCA_DATA = merged
 
             rows = []
@@ -207,17 +245,19 @@ if DF_FEATURES is not None and DF_CLUSTERS is not None:
                     try:
                         row["Silhouette"] = silhouette_score(scaled[valid_mask], labels[valid_mask])
                         row["Davies_Bouldin"] = davies_bouldin_score(scaled[valid_mask], labels[valid_mask])
-                        row["Calinski_Harabasz"] = calinski_harabasz_score(
-                            scaled[valid_mask], labels[valid_mask]
-                        )
+                        row["Inercia"] = KMeans(
+                            n_clusters=n_clusters,
+                            random_state=42,
+                            n_init=10,
+                        ).fit(scaled[valid_mask]).inertia_
                     except Exception:
                         row["Silhouette"] = None
                         row["Davies_Bouldin"] = None
-                        row["Calinski_Harabasz"] = None
+                        row["Inercia"] = None
                 else:
                     row["Silhouette"] = None
                     row["Davies_Bouldin"] = None
-                    row["Calinski_Harabasz"] = None
+                    row["Inercia"] = None
                 rows.append(row)
             DF_CLUSTER = pd.DataFrame(rows)
             DF_CLUSTER = DF_CLUSTER.round(3)
@@ -240,13 +280,6 @@ REG_METRICS = {
     "Test MAE": "Test_MAE",
     "Val RMSE": "Val_RMSE",
     "Test RMSE": "Test_RMSE",
-    "CV MAE Mean": "CV_MAE_mean",
-}
-
-CLUSTER_METRICS = {
-    "Silhouette": "Silhouette",
-    "Davies Bouldin": "Davies_Bouldin",
-    "Calinski Harabasz": "Calinski_Harabasz",
 }
 
 CLASS_TABLE_COLS = [
@@ -262,7 +295,6 @@ CLASS_TABLE_COLS = [
 
 REG_TABLE_COLS = [
     "Model",
-    "CV_MAE_mean",
     "Val_MAE",
     "Val_RMSE",
     "Val_R2",
@@ -276,7 +308,7 @@ CLUSTER_TABLE_COLS = [
     "N_Clusters",
     "Silhouette",
     "Davies_Bouldin",
-    "Calinski_Harabasz",
+    "Inercia",
 ]
 
 TABLE_LABELS = {
@@ -304,6 +336,113 @@ def format_kpi(value: float | None) -> str:
     return f"{value:.3f}"
 
 
+def build_cluster_summary_figure() -> go.Figure:
+    if SCALED_FEATURES is None or SCALED_FEATURES.size == 0:
+        return empty_figure("Datos de clustering no disponibles")
+
+    n_samples = SCALED_FEATURES.shape[0]
+    if n_samples < 2:
+        return empty_figure("No hay suficientes datos para el metodo del codo")
+
+    max_k = min(10, n_samples)
+    k_values = list(range(2, max_k + 1))
+    inertia_values = []
+    silhouette_values = []
+    davies_values = []
+    for k in k_values:
+        try:
+            model = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels = model.fit_predict(SCALED_FEATURES)
+            inertia_values.append(model.inertia_)
+            silhouette_values.append(
+                silhouette_score(SCALED_FEATURES, labels) if k > 1 else None
+            )
+            davies_values.append(
+                davies_bouldin_score(SCALED_FEATURES, labels) if k > 1 else None
+            )
+        except Exception:
+            inertia_values.append(None)
+            silhouette_values.append(None)
+            davies_values.append(None)
+
+    df = pd.DataFrame(
+        {
+            "K": k_values,
+            "Inercia": inertia_values,
+            "Silhouette": silhouette_values,
+            "Davies_Bouldin": davies_values,
+        }
+    ).dropna(subset=["Inercia", "Silhouette", "Davies_Bouldin"], how="all")
+
+    if df.empty:
+        return empty_figure("No hay suficientes datos para las metricas de clustering")
+
+    recommended_k = None
+    if df["Silhouette"].notna().any():
+        recommended_k = int(df.loc[df["Silhouette"].idxmax(), "K"])
+    elif df["Davies_Bouldin"].notna().any():
+        recommended_k = int(df.loc[df["Davies_Bouldin"].idxmin(), "K"])
+
+    fig = make_subplots(
+        rows=3,
+        cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.08,
+        subplot_titles=("Metodo del codo (KMeans)", "Silhouette Score", "Davies-Bouldin Index"),
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Inercia"], mode="lines+markers", name="Inercia"),
+        row=1,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Silhouette"], mode="lines+markers", name="Silhouette"),
+        row=2,
+        col=1,
+    )
+    fig.add_trace(
+        go.Scatter(x=df["K"], y=df["Davies_Bouldin"], mode="lines+markers", name="Davies-Bouldin"),
+        row=3,
+        col=1,
+    )
+
+    if recommended_k is not None:
+        fig.add_vline(
+            x=recommended_k,
+            line_dash="dash",
+            line_color="#ef4444",
+            annotation_text=f"K recomendado: {recommended_k}",
+            annotation_position="top",
+        )
+
+    fig.update_layout(
+        title="Metricas de clustering (K recomendado marcado)",
+        margin=dict(l=30, r=20, t=70, b=30),
+        showlegend=False,
+    )
+    fig.update_xaxes(dtick=1)
+    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
+    return fig
+
+
+CLUSTER_METRICS_FIG = build_cluster_summary_figure()
+
+
+def format_anomaly_label(col_name: str) -> str:
+    lower = col_name.lower()
+    if "nu" in lower:
+        try:
+            digits = lower.split("nu", 1)[1]
+            if digits.isdigit():
+                nu_value = int(digits) / 100
+                return f"OneClassSVM nu={nu_value:.2f}"
+        except Exception:
+            return col_name
+    if "consensus" in lower:
+        return "OneClassSVM consensus"
+    return col_name
+
+
 # -----------------------------------------------------------------------------
 # Aplicacion Dash
 # -----------------------------------------------------------------------------
@@ -314,44 +453,6 @@ app = Dash(
     title="Crypto ML Dashboard",
     assets_folder=str(ASSETS_DIR),
     suppress_callback_exceptions=True,
-)
-
-status_cards = html.Div(
-    className="status-grid",
-    children=[
-        html.Div(
-            className=f"status-card {'ok' if CRYPTO_AVAILABLE else 'warn'}",
-            children=[
-                html.Div("Datos cripto", className="status-title"),
-                html.Div("Cargado" if CRYPTO_AVAILABLE else "Falta", className="status-value"),
-                html.Div("CRYPTO_RAW_PATH" if CRYPTO_RAW_ENV else "data/crypto_raw.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_FEATURES is not None else 'warn'}",
-            children=[
-                html.Div("Features de clustering", className="status-title"),
-                html.Div("Cargado" if DF_FEATURES is not None else "Falta", className="status-value"),
-                html.Div("data/features_clustering.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_CLUSTERS is not None else 'warn'}",
-            children=[
-                html.Div("Etiquetas de cluster", className="status-title"),
-                html.Div("Cargado" if DF_CLUSTERS is not None else "Falta", className="status-value"),
-                html.Div("data/cluster_labels.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_CLASS is not None else 'warn'}",
-            children=[
-                html.Div("Reporte supervisado", className="status-title"),
-                html.Div("Cargado" if DF_CLASS is not None else "Falta", className="status-value"),
-                html.Div("supervised/reports/supervised_report.md", className="status-meta"),
-            ],
-        ),
-    ],
 )
 
 best_clf = best_model(DF_CLASS, "Test_ROC_AUC", maximize=True)
@@ -408,7 +509,6 @@ app.layout = html.Div(
                 ),
             ],
         ),
-        status_cards,
         kpi_cards,
         dcc.Tabs(
             className="tabs",
@@ -467,7 +567,6 @@ app.layout = html.Div(
                                         dcc.Graph(id="eda-price"),
                                         dcc.Graph(id="eda-returns"),
                                         dcc.Graph(id="eda-volatility"),
-                                        dcc.Graph(id="eda-volume"),
                                     ],
                                 ),
                             ],
@@ -509,26 +608,13 @@ app.layout = html.Div(
                                                 ),
                                             ],
                                         ),
-                                        html.Div(
-                                            className="control",
-                                            children=[
-                                                html.Label("Metrica"),
-                                                dcc.Dropdown(
-                                                    id="cluster-metric",
-                                                    options=[{"label": k, "value": v} for k, v in CLUSTER_METRICS.items()],
-                                                    value=list(CLUSTER_METRICS.values())[0],
-                                                    clearable=False,
-                                                    disabled=DF_CLUSTER is None,
-                                                ),
-                                            ],
-                                        ),
                                     ],
                                 ),
                                 html.Div(
                                     className="graph-grid",
                                     children=[
                                         dcc.Graph(id="cluster-pca"),
-                                        dcc.Graph(id="cluster-metrics"),
+                                        dcc.Graph(id="cluster-metrics", figure=CLUSTER_METRICS_FIG),
                                     ],
                                 ),
                                 dash_table.DataTable(
@@ -544,7 +630,59 @@ app.layout = html.Div(
                                     style_cell={"padding": "8px", "fontFamily": "Space Grotesk"},
                                 ),
                             ],
-                        )
+                        ),
+                        html.Div(
+                            className="panel",
+                            children=[
+                                html.Div(
+                                    className="panel-header",
+                                    children=[
+                                        html.H3("Detección de anomalías - OneClass SVM"),
+                                        html.P("Anomalías resaltadas en rojo y separadas del resto."),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="controls",
+                                    children=[
+                                        html.Div(
+                                            className="control",
+                                            children=[
+                                                html.Label("Algoritmo OneClass SVM"),
+                                                dcc.Dropdown(
+                                                    id="anomaly-algo",
+                                                    options=[
+                                                        {"label": format_anomaly_label(c), "value": c}
+                                                        for c in ANOMALY_COLUMNS
+                                                    ],
+                                                    value=(ANOMALY_COLUMNS[0] if ANOMALY_COLUMNS else None),
+                                                    clearable=False,
+                                                    disabled=not ANOMALY_COLUMNS,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="graph-grid",
+                                    children=[
+                                        dcc.Graph(id="anomaly-pca"),
+                                        dcc.Graph(id="anomaly-stats"),
+                                    ],
+                                ),
+                                dash_table.DataTable(
+                                    id="anomaly-table",
+                                    columns=[
+                                        {"name": "Moneda", "id": "Symbol"},
+                                        {"name": "Tipo", "id": "Type"},
+                                    ],
+                                    data=[],
+                                    page_size=10,
+                                    style_table={"overflowX": "auto"},
+                                    style_header={"backgroundColor": "#0f172a", "color": "white"},
+                                    style_cell={"padding": "8px", "fontFamily": "Space Grotesk"},
+                                ),
+                            ],
+                        ),
                     ],
                 ),
                 dcc.Tab(
@@ -654,7 +792,6 @@ app.layout = html.Div(
     Output("eda-price", "figure"),
     Output("eda-returns", "figure"),
     Output("eda-volatility", "figure"),
-    Output("eda-volume", "figure"),
     Input("eda-symbol", "value"),
     Input("eda-date-range", "start_date"),
     Input("eda-date-range", "end_date"),
@@ -663,7 +800,6 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
     if not CRYPTO_AVAILABLE or symbol is None:
         message = "crypto_raw.csv no disponible"
         return (
-            empty_figure(message),
             empty_figure(message),
             empty_figure(message),
             empty_figure(message),
@@ -678,7 +814,6 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
     if df.empty:
         message = "Sin datos para el rango seleccionado"
         return (
-            empty_figure(message),
             empty_figure(message),
             empty_figure(message),
             empty_figure(message),
@@ -710,14 +845,7 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
         fig_vol.update_layout(margin=dict(l=30, r=20, t=50, b=30))
         fig_vol.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
-    if "Volume" not in df.columns:
-        fig_volume = empty_figure("Columna Volume no encontrada")
-    else:
-        fig_volume = px.area(df, x="Date", y="Volume", title="Volumen de trading")
-        fig_volume.update_layout(margin=dict(l=30, r=20, t=50, b=30))
-        fig_volume.update_yaxes(tickformat=".3f", hoverformat=".3f")
-
-    return fig_price, fig_returns, fig_vol, fig_volume
+    return fig_price, fig_returns, fig_vol
 
 
 @app.callback(
@@ -746,26 +874,6 @@ def update_cluster_pca(cluster_col: str | None):
     )
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30))
     fig.update_xaxes(tickformat=".3f", hoverformat=".3f")
-    fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
-    return fig
-
-
-@app.callback(
-    Output("cluster-metrics", "figure"),
-    Input("cluster-metric", "value"),
-)
-def update_cluster_metrics(metric: str | None):
-    if DF_CLUSTER is None or DF_CLUSTER.empty or metric not in DF_CLUSTER.columns:
-        return empty_figure("Metricas de clustering no disponibles")
-
-    df = DF_CLUSTER[["Model", metric]].dropna().copy()
-    df[metric] = pd.to_numeric(df[metric], errors="coerce")
-    df = df.dropna()
-    if df.empty:
-        return empty_figure("La metrica no tiene valores")
-
-    fig = px.bar(df, x="Model", y=metric, title="Comparacion de metricas de clustering")
-    fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
     fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
 
@@ -808,6 +916,102 @@ def update_reg_metric(metric: str | None):
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
     fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
+
+
+@app.callback(
+    Output("anomaly-pca", "figure"),
+    Output("anomaly-stats", "figure"),
+    Output("anomaly-table", "data"),
+    Input("anomaly-algo", "value"),
+)
+def update_anomaly_detection(anomaly_col: str | None):
+    if PCA_DATA is None or not anomaly_col or anomaly_col not in PCA_DATA.columns:
+        return (
+            empty_figure("Datos de anomalias no disponibles"),
+            empty_figure("Datos de anomalias no disponibles"),
+            [],
+        )
+
+    df_plot = PCA_DATA.copy()
+    df_plot["AnomalyLabel"] = df_plot[anomaly_col].astype(str)
+    
+    # Separar anomalías y normales
+    anomalies = df_plot[df_plot["AnomalyLabel"] == "-1"].copy()
+    normals = df_plot[df_plot["AnomalyLabel"] != "-1"].copy()
+    
+    # Grafico PCA con anomalias destacadas
+    fig_pca = go.Figure()
+    
+    # Graficar puntos normales
+    if len(normals) > 0:
+        fig_pca.add_trace(go.Scatter(
+            x=normals["PC1"],
+            y=normals["PC2"],
+            mode="markers",
+            name="Normal",
+            marker=dict(size=8, color="#3b82f6", opacity=0.6),
+            text=normals["Symbol"],
+            hovertemplate="<b>%{text}</b><br>PC1: %{x:.3f}<br>PC2: %{y:.3f}<extra></extra>",
+        ))
+    
+    # Graficar anomalías en rojo
+    if len(anomalies) > 0:
+        fig_pca.add_trace(go.Scatter(
+            x=anomalies["PC1"],
+            y=anomalies["PC2"],
+            mode="markers",
+            name="Anomalia",
+            marker=dict(size=10, color="#ef4444", symbol="diamond", opacity=0.9),
+            text=anomalies["Symbol"],
+            hovertemplate="<b>%{text}</b><br>PC1: %{x:.3f}<br>PC2: %{y:.3f}<extra></extra>",
+        ))
+    
+    fig_pca.update_layout(
+        title=f"Proyeccion PCA - Anomalias ({anomaly_col})",
+        xaxis_title="PC1",
+        yaxis_title="PC2",
+        margin=dict(l=30, r=20, t=50, b=30),
+        hovermode="closest",
+        legend=dict(x=0.01, y=0.99),
+    )
+    fig_pca.update_xaxes(tickformat=".3f")
+    fig_pca.update_yaxes(tickformat=".3f")
+    
+    # Grafico de estadisticas
+    n_total = len(df_plot)
+    n_anomalies = len(anomalies)
+    n_normal = len(normals)
+    pct_anomalies = (n_anomalies / n_total * 100) if n_total > 0 else 0
+    
+    stats_data = pd.DataFrame({
+        "Tipo": ["Normal", "Anomalia"],
+        "Cantidad": [n_normal, n_anomalies],
+    })
+    
+    fig_stats = px.bar(
+        stats_data,
+        x="Tipo",
+        y="Cantidad",
+        color="Tipo",
+        color_discrete_map={"Normal": "#3b82f6", "Anomalia": "#ef4444"},
+        title=f"Distribucion de puntos (Total: {n_total} | Anomalias: {pct_anomalies:.1f}%)",
+    )
+    fig_stats.update_layout(
+        margin=dict(l=30, r=20, t=50, b=30),
+        showlegend=False,
+    )
+    fig_stats.update_yaxes(tickformat=".3f", hoverformat=".3f")
+    
+    # Tabla de anomalias
+    if len(anomalies) > 0:
+        table_data = [
+            {"Symbol": row["Symbol"], "Type": "Anomalia"}
+            for _, row in anomalies.iterrows()
+        ]
+    else:
+        table_data = []
+    
+    return fig_pca, fig_stats, table_data
 
 
 if __name__ == "__main__":
