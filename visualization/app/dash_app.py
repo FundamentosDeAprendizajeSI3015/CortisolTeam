@@ -17,7 +17,7 @@ from plotly.subplots import make_subplots
 from dash import Dash, Input, Output, dcc, html, dash_table
 from sklearn.cluster import KMeans
 from sklearn.decomposition import PCA
-from sklearn.metrics import calinski_harabasz_score, davies_bouldin_score, silhouette_score
+from sklearn.metrics import davies_bouldin_score, silhouette_score
 from sklearn.preprocessing import StandardScaler
 from sklearn.svm import OneClassSVM
 
@@ -245,17 +245,19 @@ if DF_FEATURES is not None and DF_CLUSTERS is not None:
                     try:
                         row["Silhouette"] = silhouette_score(scaled[valid_mask], labels[valid_mask])
                         row["Davies_Bouldin"] = davies_bouldin_score(scaled[valid_mask], labels[valid_mask])
-                        row["Calinski_Harabasz"] = calinski_harabasz_score(
-                            scaled[valid_mask], labels[valid_mask]
-                        )
+                        row["Inercia"] = KMeans(
+                            n_clusters=n_clusters,
+                            random_state=42,
+                            n_init=10,
+                        ).fit(scaled[valid_mask]).inertia_
                     except Exception:
                         row["Silhouette"] = None
                         row["Davies_Bouldin"] = None
-                        row["Calinski_Harabasz"] = None
+                        row["Inercia"] = None
                 else:
                     row["Silhouette"] = None
                     row["Davies_Bouldin"] = None
-                    row["Calinski_Harabasz"] = None
+                    row["Inercia"] = None
                 rows.append(row)
             DF_CLUSTER = pd.DataFrame(rows)
             DF_CLUSTER = DF_CLUSTER.round(3)
@@ -306,7 +308,7 @@ CLUSTER_TABLE_COLS = [
     "N_Clusters",
     "Silhouette",
     "Davies_Bouldin",
-    "Calinski_Harabasz",
+    "Inercia",
 ]
 
 TABLE_LABELS = {
