@@ -102,7 +102,6 @@ def load_supervised_metrics(report_path: Path) -> tuple[pd.DataFrame | None, pd.
         reg_df = reg_df.rename(
             columns={
                 "Modelo": "Model",
-                "CV_MAE": "CV_MAE_mean",
                 "Val_MAE": "Val_MAE",
                 "Val_RMSE": "Val_RMSE",
                 "Val_R2": "Val_R2",
@@ -177,11 +176,14 @@ if DF_CRYPTO is not None:
 
 PCA_DATA = None
 CLUSTER_COLUMNS: list[str] = []
+ANOMALY_COLUMNS: list[str] = []
 DF_CLUSTER = None
 
 if DF_FEATURES is not None and DF_CLUSTERS is not None:
     if "Symbol" in DF_FEATURES.columns and "Symbol" in DF_CLUSTERS.columns:
         CLUSTER_COLUMNS = [c for c in DF_CLUSTERS.columns if c != "Symbol"]
+        ANOMALY_COLUMNS = [c for c in CLUSTER_COLUMNS if "OneClass" in c]
+        CLUSTER_COLUMNS = [c for c in CLUSTER_COLUMNS if c not in ANOMALY_COLUMNS]
         merged = DF_FEATURES.merge(DF_CLUSTERS, on="Symbol", how="left")
         feature_cols = [c for c in DF_FEATURES.columns if c != "Symbol"]
         if feature_cols:
@@ -240,7 +242,6 @@ REG_METRICS = {
     "Test MAE": "Test_MAE",
     "Val RMSE": "Val_RMSE",
     "Test RMSE": "Test_RMSE",
-    "CV MAE Mean": "CV_MAE_mean",
 }
 
 CLUSTER_METRICS = {
@@ -262,7 +263,6 @@ CLASS_TABLE_COLS = [
 
 REG_TABLE_COLS = [
     "Model",
-    "CV_MAE_mean",
     "Val_MAE",
     "Val_RMSE",
     "Val_R2",
@@ -314,44 +314,6 @@ app = Dash(
     title="Crypto ML Dashboard",
     assets_folder=str(ASSETS_DIR),
     suppress_callback_exceptions=True,
-)
-
-status_cards = html.Div(
-    className="status-grid",
-    children=[
-        html.Div(
-            className=f"status-card {'ok' if CRYPTO_AVAILABLE else 'warn'}",
-            children=[
-                html.Div("Datos cripto", className="status-title"),
-                html.Div("Cargado" if CRYPTO_AVAILABLE else "Falta", className="status-value"),
-                html.Div("CRYPTO_RAW_PATH" if CRYPTO_RAW_ENV else "data/crypto_raw.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_FEATURES is not None else 'warn'}",
-            children=[
-                html.Div("Features de clustering", className="status-title"),
-                html.Div("Cargado" if DF_FEATURES is not None else "Falta", className="status-value"),
-                html.Div("data/features_clustering.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_CLUSTERS is not None else 'warn'}",
-            children=[
-                html.Div("Etiquetas de cluster", className="status-title"),
-                html.Div("Cargado" if DF_CLUSTERS is not None else "Falta", className="status-value"),
-                html.Div("data/cluster_labels.csv", className="status-meta"),
-            ],
-        ),
-        html.Div(
-            className=f"status-card {'ok' if DF_CLASS is not None else 'warn'}",
-            children=[
-                html.Div("Reporte supervisado", className="status-title"),
-                html.Div("Cargado" if DF_CLASS is not None else "Falta", className="status-value"),
-                html.Div("supervised/reports/supervised_report.md", className="status-meta"),
-            ],
-        ),
-    ],
 )
 
 best_clf = best_model(DF_CLASS, "Test_ROC_AUC", maximize=True)
@@ -408,7 +370,6 @@ app.layout = html.Div(
                 ),
             ],
         ),
-        status_cards,
         kpi_cards,
         dcc.Tabs(
             className="tabs",
@@ -467,7 +428,6 @@ app.layout = html.Div(
                                         dcc.Graph(id="eda-price"),
                                         dcc.Graph(id="eda-returns"),
                                         dcc.Graph(id="eda-volatility"),
-                                        dcc.Graph(id="eda-volume"),
                                     ],
                                 ),
                             ],
@@ -544,7 +504,56 @@ app.layout = html.Div(
                                     style_cell={"padding": "8px", "fontFamily": "Space Grotesk"},
                                 ),
                             ],
-                        )
+                        ),
+                        html.Div(
+                            className="panel",
+                            children=[
+                                html.Div(
+                                    className="panel-header",
+                                    children=[
+                                        html.H3("Detección de anomalías - OneClass SVM"),
+                                        html.P("Anomalías resaltadas en rojo y separadas del resto."),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="controls",
+                                    children=[
+                                        html.Div(
+                                            className="control",
+                                            children=[
+                                                html.Label("Algoritmo OneClass SVM"),
+                                                dcc.Dropdown(
+                                                    id="anomaly-algo",
+                                                    options=[{"label": c, "value": c} for c in ANOMALY_COLUMNS],
+                                                    value=(ANOMALY_COLUMNS[0] if ANOMALY_COLUMNS else None),
+                                                    clearable=False,
+                                                    disabled=not ANOMALY_COLUMNS,
+                                                ),
+                                            ],
+                                        ),
+                                    ],
+                                ),
+                                html.Div(
+                                    className="graph-grid",
+                                    children=[
+                                        dcc.Graph(id="anomaly-pca"),
+                                        dcc.Graph(id="anomaly-stats"),
+                                    ],
+                                ),
+                                dash_table.DataTable(
+                                    id="anomaly-table",
+                                    columns=[
+                                        {"name": "Moneda", "id": "Symbol"},
+                                        {"name": "Tipo", "id": "Type"},
+                                    ],
+                                    data=[],
+                                    page_size=10,
+                                    style_table={"overflowX": "auto"},
+                                    style_header={"backgroundColor": "#0f172a", "color": "white"},
+                                    style_cell={"padding": "8px", "fontFamily": "Space Grotesk"},
+                                ),
+                            ],
+                        ),
                     ],
                 ),
                 dcc.Tab(
@@ -654,7 +663,6 @@ app.layout = html.Div(
     Output("eda-price", "figure"),
     Output("eda-returns", "figure"),
     Output("eda-volatility", "figure"),
-    Output("eda-volume", "figure"),
     Input("eda-symbol", "value"),
     Input("eda-date-range", "start_date"),
     Input("eda-date-range", "end_date"),
@@ -663,7 +671,6 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
     if not CRYPTO_AVAILABLE or symbol is None:
         message = "crypto_raw.csv no disponible"
         return (
-            empty_figure(message),
             empty_figure(message),
             empty_figure(message),
             empty_figure(message),
@@ -678,7 +685,6 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
     if df.empty:
         message = "Sin datos para el rango seleccionado"
         return (
-            empty_figure(message),
             empty_figure(message),
             empty_figure(message),
             empty_figure(message),
@@ -710,14 +716,7 @@ def update_eda(symbol: str | None, start_date: str | None, end_date: str | None)
         fig_vol.update_layout(margin=dict(l=30, r=20, t=50, b=30))
         fig_vol.update_yaxes(tickformat=".3f", hoverformat=".3f")
 
-    if "Volume" not in df.columns:
-        fig_volume = empty_figure("Columna Volume no encontrada")
-    else:
-        fig_volume = px.area(df, x="Date", y="Volume", title="Volumen de trading")
-        fig_volume.update_layout(margin=dict(l=30, r=20, t=50, b=30))
-        fig_volume.update_yaxes(tickformat=".3f", hoverformat=".3f")
-
-    return fig_price, fig_returns, fig_vol, fig_volume
+    return fig_price, fig_returns, fig_vol
 
 
 @app.callback(
@@ -808,6 +807,102 @@ def update_reg_metric(metric: str | None):
     fig.update_layout(margin=dict(l=30, r=20, t=50, b=30), showlegend=False)
     fig.update_yaxes(tickformat=".3f", hoverformat=".3f")
     return fig
+
+
+@app.callback(
+    Output("anomaly-pca", "figure"),
+    Output("anomaly-stats", "figure"),
+    Output("anomaly-table", "data"),
+    Input("anomaly-algo", "value"),
+)
+def update_anomaly_detection(anomaly_col: str | None):
+    if PCA_DATA is None or not anomaly_col or anomaly_col not in PCA_DATA.columns:
+        return (
+            empty_figure("Datos de anomalias no disponibles"),
+            empty_figure("Datos de anomalias no disponibles"),
+            [],
+        )
+
+    df_plot = PCA_DATA.copy()
+    df_plot["AnomalyLabel"] = df_plot[anomaly_col].astype(str)
+    
+    # Separar anomalías y normales
+    anomalies = df_plot[df_plot["AnomalyLabel"] == "-1"].copy()
+    normals = df_plot[df_plot["AnomalyLabel"] != "-1"].copy()
+    
+    # Grafico PCA con anomalias destacadas
+    fig_pca = go.Figure()
+    
+    # Graficar puntos normales
+    if len(normals) > 0:
+        fig_pca.add_trace(go.Scatter(
+            x=normals["PC1"],
+            y=normals["PC2"],
+            mode="markers",
+            name="Normal",
+            marker=dict(size=8, color="#3b82f6", opacity=0.6),
+            text=normals["Symbol"],
+            hovertemplate="<b>%{text}</b><br>PC1: %{x:.3f}<br>PC2: %{y:.3f}<extra></extra>",
+        ))
+    
+    # Graficar anomalías en rojo
+    if len(anomalies) > 0:
+        fig_pca.add_trace(go.Scatter(
+            x=anomalies["PC1"],
+            y=anomalies["PC2"],
+            mode="markers",
+            name="Anomalia",
+            marker=dict(size=10, color="#ef4444", symbol="diamond", opacity=0.9),
+            text=anomalies["Symbol"],
+            hovertemplate="<b>%{text}</b><br>PC1: %{x:.3f}<br>PC2: %{y:.3f}<extra></extra>",
+        ))
+    
+    fig_pca.update_layout(
+        title=f"Proyeccion PCA - Anomalias ({anomaly_col})",
+        xaxis_title="PC1",
+        yaxis_title="PC2",
+        margin=dict(l=30, r=20, t=50, b=30),
+        hovermode="closest",
+        legend=dict(x=0.01, y=0.99),
+    )
+    fig_pca.update_xaxes(tickformat=".3f")
+    fig_pca.update_yaxes(tickformat=".3f")
+    
+    # Grafico de estadisticas
+    n_total = len(df_plot)
+    n_anomalies = len(anomalies)
+    n_normal = len(normals)
+    pct_anomalies = (n_anomalies / n_total * 100) if n_total > 0 else 0
+    
+    stats_data = pd.DataFrame({
+        "Tipo": ["Normal", "Anomalia"],
+        "Cantidad": [n_normal, n_anomalies],
+    })
+    
+    fig_stats = px.bar(
+        stats_data,
+        x="Tipo",
+        y="Cantidad",
+        color="Tipo",
+        color_discrete_map={"Normal": "#3b82f6", "Anomalia": "#ef4444"},
+        title=f"Distribucion de puntos (Total: {n_total} | Anomalias: {pct_anomalies:.1f}%)",
+    )
+    fig_stats.update_layout(
+        margin=dict(l=30, r=20, t=50, b=30),
+        showlegend=False,
+    )
+    fig_stats.update_yaxes(tickformat=".3f", hoverformat=".3f")
+    
+    # Tabla de anomalias
+    if len(anomalies) > 0:
+        table_data = [
+            {"Symbol": row["Symbol"], "Type": "Anomalia"}
+            for _, row in anomalies.iterrows()
+        ]
+    else:
+        table_data = []
+    
+    return fig_pca, fig_stats, table_data
 
 
 if __name__ == "__main__":
