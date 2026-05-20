@@ -4,6 +4,14 @@ Pipeline completo de Machine Learning aplicado a criptomonedas: desde ingesta y 
 
 **Dataset:** 23 monedas reales (Kaggle, 2013–2021) + 220 monedas sintéticas (GBM + Jump-Diffusion) = **~988K filas totales**.
 
+## Equipo
+
+- **Pablo Cabrejos Munera**
+- **Juan Manuel Florez Robledo**
+- **Jean Carlo Londoño Ocampo**
+- **Alejandro Garces Ramirez**
+- **Paula Inés Llanos López**
+
 ---
 
 ## Fases del proyecto
@@ -18,6 +26,14 @@ Pipeline completo de Machine Learning aplicado a criptomonedas: desde ingesta y 
 | 05 | `svm_kernels/` | SVM con Multiple Kernel Learning (MKL) | ✅ |
 | 06 | `scoring/` | Evaluación final y backtesting | ✅ |
 | 07 | `visualization/` | Dashboard HTML interactivo | ✅ |
+
+---
+
+## Requisitos del sistema
+ 
+- **Python:** 3.9 o superior
+- **Sistema operativo:** Compatible con Windows, macOS y Linux
+- Se recomienda usar un entorno virtual (`venv` o `conda`)
 
 ---
 
@@ -66,3 +82,15 @@ python visualization/app/main.py
 - **Clasificación:** Random Forest · Test AUC=0.591 · Test F1=0.65
 - **Regresión:** XGBoost · Test R²=0.916 (cota superior, datos sintéticos)
 - **SVM-MKL:** Anti-Natural MKL · AUC=0.528 · todos los MKL > kernel único
+
+---
+ 
+## Créditos
+ 
+El módulo `svm_kernels/` está adaptado del repositorio [extremality_mkl](https://github.com/maospina1041/extremality_mkl) de **maospina1041**.
+ 
+---
+
+## Uso de IA
+ 
+Durante el desarrollo de este proyecto utilizamos **Claude** (Anthropic) como herramienta de apoyo en inteligencia artificial.
